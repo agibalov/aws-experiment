@@ -1,0 +1,225 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Outputs": {
+    "ApiId": {
+      "Value": { "Ref": "APIGWRESTAPI" }
+    }
+  },
+
+  "Resources": {
+    "LoggingRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": ["lambda.amazonaws.com"]
+            },
+            "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "LambdaWriteCWLogs",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Sid": "AllowLogging",
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "*"
+            }]
+          }
+        }]
+      }
+    },
+    "DummyJsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.dummyHandler",
+        "Role": {
+          "Fn::GetAtt": ["LoggingRole", "Arn"]
+        },
+        "Description": "A dummy JS function",
+        "Code": {
+          "ZipFile": { "Fn::Join": ["", [
+            "exports.dummyHandler = (event, context, callback) => {",
+            "  callback(null, {'statusCode': 200, 'headers': {}, 'body': 'I am JavaScript! ' + new Date()});",
+            "};"
+          ]]}
+        },
+        "Runtime": "nodejs4.3",
+        "MemorySize": "512",
+        "Timeout": "60"
+      }
+    },
+    "DummyJavaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "me.loki2302.DummyRequestStreamHandler",
+        "Role": {
+          "Fn::GetAtt": ["LoggingRole", "Arn"]
+        },
+        "Description": "A dummy Java function",
+        "Code": {
+          "S3Bucket": "loki2302-code-bucket",
+          "S3Key": "aws-lambda-experiment-1.0-SNAPSHOT.zip"
+        },
+        "Runtime": "java8",
+        "MemorySize": "512",
+        "Timeout": "60"
+      }
+    },
+
+    "APIGWToLambda": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "apigateway.amazonaws.com"
+              ]
+            },
+            "Action": [
+              "sts:AssumeRole"
+            ]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "DummyApi-CallLambdaFunctions",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Sid": "AllowLambda",
+              "Effect": "Allow",
+              "Action": [
+                "lambda:InvokeFunction"
+              ],
+              "Resource": "*"
+            }]
+          }
+        }]
+      }
+    },
+    "APIGWRESTAPI": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Description": "Description for APIGWRESTAPI",
+        "Name": "dummy-api"
+      }
+    },
+    
+    "APIGWRESTAPIdummyJs": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": ["APIGWRESTAPI", "RootResourceId"]
+        },
+        "PathPart": "dummyJs",
+        "RestApiId": {
+          "Ref": "APIGWRESTAPI"
+        }
+      }
+    },
+    "APIGWRESTAPIdummyJsGET": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "APIGWRESTAPI"
+        },
+        "ResourceId": {
+          "Ref": "APIGWRESTAPIdummyJs"
+        },
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Credentials": {
+            "Fn::GetAtt": ["APIGWToLambda", "Arn"]
+          },          
+          "Uri": {
+            "Fn::Join": [
+              "", [
+                "arn:aws:apigateway:", {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                { "Fn::GetAtt": ["DummyJsFunction", "Arn"] },
+                "/invocations"
+              ]
+            ]
+          }
+        }
+      }
+    },
+
+    "APIGWRESTAPIdummyJava": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": ["APIGWRESTAPI", "RootResourceId"]
+        },
+        "PathPart": "dummyJava",
+        "RestApiId": {
+          "Ref": "APIGWRESTAPI"
+        }
+      }
+    },
+    "APIGWRESTAPIdummyJavaGET": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "APIGWRESTAPI"
+        },
+        "ResourceId": {
+          "Ref": "APIGWRESTAPIdummyJava"
+        },
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Credentials": {
+            "Fn::GetAtt": ["APIGWToLambda", "Arn"]
+          },
+          "Uri": {
+            "Fn::Join": [
+              "", [
+                "arn:aws:apigateway:", {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                { "Fn::GetAtt": ["DummyJavaFunction", "Arn"] },
+                "/invocations"
+              ]
+            ]
+          }
+        }
+      }
+    },
+
+    "RestApiDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "Properties": {
+        "RestApiId": { "Ref": "APIGWRESTAPI" },
+        "StageName": "prod"
+      },
+      "DependsOn": [ 
+        "APIGWRESTAPIdummyJsGET", 
+        "APIGWRESTAPIdummyJavaGET" 
+      ]
+    }
+  }
+}
