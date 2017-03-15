@@ -1,0 +1,30 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.2.RELEASE'
+}
+
+group 'me.loki2302'
+version '1.0-SNAPSHOT'
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '3.4'
+  distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
+}
+
+apply plugin: 'java'
+apply plugin: 'war'
+
+sourceCompatibility = 1.8
+
+bootRepackage {
+    mainClass = 'me.loki2302.App'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+    compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '1.5.2.RELEASE'
+    providedRuntime "org.springframework.boot:spring-boot-starter-tomcat"
+}

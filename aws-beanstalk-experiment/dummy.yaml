@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Outputs:
+  Url:
+    Value: !GetAtt dummyEnvironment.EndpointURL
+Resources:
+  dummyApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: dummyapp
+      Description: My dummy application
+  dummyApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName:
+        Ref: dummyApplication
+      Description: My dummy application version
+      SourceBundle:
+        S3Bucket: loki2302-code-bucket
+        S3Key: aws-beanstalk-experiment-1.0-SNAPSHOT.war
+  dummyEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName:
+        Ref: dummyApplication
+      EnvironmentName: dev-env
+      Description: My dummy environment
+      VersionLabel:
+        Ref: dummyApplicationVersion
+      SolutionStackName: 64bit Amazon Linux 2016.09 v2.4.3 running Java 8
+      OptionSettings:
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SERVER_PORT
+        Value: 5000
