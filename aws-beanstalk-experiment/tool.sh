@@ -43,24 +43,27 @@ elif [ "$command" == "undeploy" ]; then
 elif [ "$command" == "test" ]; then
   echo "TESTING"
 
-  # Python is used here to extract OutputValue from JSON provided by aws cloudformation
-  # [
-  #   {
-  #     "OutputKey": "Url",
-  #     "OutputValue": "awseb-e-k-AWSEBLoa-1V2C87OZUBMEA-2118969383.us-west-1.elb.amazonaws.com"
-  #   }
-  # ]
-
-  url=http://`\
+  `\
   aws cloudformation describe-stacks \
     --stack-name $stackName \
     --query Stacks[0].Outputs \
     --region $region | \
-  python -c "import json,sys;print json.load(sys.stdin)[0]['OutputValue']
+  python -c "
+import json,sys;
+o=json.load(sys.stdin);
+print 'export URL=%s' % (filter(lambda x: x['OutputKey']=='Url', o)[0]['OutputValue'],);
+print 'export DBADDRESS=%s' % (filter(lambda x: x['OutputKey']=='DbEndpointAddress', o)[0]['OutputValue'],);
+print 'export DBPORT=%s' % (filter(lambda x: x['OutputKey']=='DbEndpointPort', o)[0]['OutputValue'],);
   "`
+  echo "Database address: $DBADDRESS"
+  echo "Database port: $DBPORT"
 
-  echo "Testing GET $url"
-  curl $url
+  echo "Testing GET $URL"
+  curl $URL
+  echo ""
+  curl $URL
+  echo ""
+  curl $URL
   echo ""
 
 else

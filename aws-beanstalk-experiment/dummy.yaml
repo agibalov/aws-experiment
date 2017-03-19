@@ -2,7 +2,34 @@ AWSTemplateFormatVersion: '2010-09-09'
 Outputs:
   Url:
     Value: !GetAtt dummyEnvironment.EndpointURL
+  DbEndpointAddress:
+    Value: !GetAtt dummyDatabase.Endpoint.Address
+  DbEndpointPort:
+    Value: !GetAtt dummyDatabase.Endpoint.Port
 Resources:
+  dummyDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: mydb1name
+      DBInstanceIdentifier: mydb1id
+      AllocatedStorage: 5
+      DBInstanceClass: db.t2.micro
+      Engine: postgres
+      EngineVersion: 9.5.4
+      MasterUsername: dbuser
+      MasterUserPassword: dbpassword
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+      - !GetAtt dummyDbSecurityGroup.GroupId
+  dummyDbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: dummy DB security group
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: 0.0.0.0/0
   dummyApplication:
     Type: AWS::ElasticBeanstalk::Application
     Properties:
@@ -31,3 +58,25 @@ Resources:
       - Namespace: aws:elasticbeanstalk:application:environment
         OptionName: SERVER_PORT
         Value: 5000
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SPRING_DATASOURCE_URL
+        Value: !Join [ "", [
+          "jdbc:postgresql://",
+          { "Fn::GetAtt": [ "dummyDatabase", "Endpoint.Address" ] },
+          ":",
+          { "Fn::GetAtt": [ "dummyDatabase", "Endpoint.Port" ] },
+          "/",
+          "mydb1name"
+        ] ]
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SPRING_DATASOURCE_USERNAME
+        Value: dbuser
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SPRING_DATASOURCE_PASSWORD
+        Value: dbpassword
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        Value: org.postgresql.Driver
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: SPRING_JPA_HIBERNATE_DDL_AUTO
+        Value: create-drop
