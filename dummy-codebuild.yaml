@@ -15,7 +15,7 @@ Resources:
         Statement:
           Effect: Allow
           Principal:
-            Service: lambda.amazonaws.com
+            Service: codebuild.amazonaws.com
           Action: sts:AssumeRole
       Path: /
       Policies:
@@ -30,8 +30,8 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
                 Resource:
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group/aws/codebuild/${DummyCodeBuildProjectName}"
-                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group/aws/codebuild/${DummyCodeBuildProjectName}:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}:*"
 
   DummyCodeBuildProject:
     Type: AWS::CodeBuild::Project
