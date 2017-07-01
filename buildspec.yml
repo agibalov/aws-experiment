@@ -8,7 +8,7 @@ phases:
   build:
     commands:
       - echo "hi there"
-      - echo "omgwtfbbq123" > 1.txt
+      - echo "omgwtfbbq222" > 1.txt
 
 artifacts:
   files:
