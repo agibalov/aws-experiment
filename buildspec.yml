@@ -1,0 +1,16 @@
+version: 0.2
+
+env:
+  variables:
+    SOMETHING: hello world
+
+phases:
+  build:
+    commands:
+      - echo "hi there"
+      - echo "omgwtfbbq" > 1.txt
+
+artifacts:
+  files:
+    - 1.txt
+  discard-paths: yes
