@@ -18,6 +18,8 @@ elif [ "$command" == "create" ]; then
     aws cloudformation create-stack \
       --stack-name $stackName \
       --template-body file://$templateBodyFilename \
+      --parameters \
+      ParameterKey=DummyGitHubOAuthToken,ParameterValue=$gitHubOAuthToken \
       --region $region \
       --capabilities CAPABILITY_NAMED_IAM
 

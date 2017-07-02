@@ -107,11 +107,16 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref DummyCodePipelinePipelineS3BucketName
+    DeletionPolicy: Delete
 
   AppS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref AppS3BucketName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+    DeletionPolicy: Delete
 
   DummyCodeBuildProject:
     Type: AWS::CodeBuild::Project

@@ -11,7 +11,7 @@ phases:
       - echo "omgwtfbbq `date`" > index.html
   post_build:
     commands:
-      - aws s3 cp index.html s3://$APP_S3_BUCKET_NAME
+      - aws s3 cp index.html s3://$APP_S3_BUCKET_NAME --acl public-read
 
 artifacts:
   files:
