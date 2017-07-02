@@ -43,6 +43,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:PutObjectAcl
                 Resource: !Sub "arn:aws:s3:::${AppS3BucketName}/*"
         - PolicyName: ReadAndWriteToDummyCodePipelinePipelineS3Bucket
           PolicyDocument:
