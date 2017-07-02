@@ -2,7 +2,7 @@
 
 region=us-east-1
 stackName=AwsCiExperimentStack
-templateBodyFilename=codepipeline.yaml
+templateBodyFilename=pipeline.yaml
 
 appS3BucketName=loki2302-s3-bucket
 dummyCodePipelinePipelineS3BucketName=dummy-codepipeline-pipeline-s3-bucket

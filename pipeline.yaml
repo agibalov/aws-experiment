@@ -20,6 +20,7 @@ Parameters:
     Type: String
 
 Resources:
+  # CI
   DummyCodeBuildProjectRole:
     Type: AWS::IAM::Role
     Properties:
@@ -68,6 +69,27 @@ Resources:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}"
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}:*"
 
+  DummyCloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: DummyCloudFormationRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: "*"
+                Resource: "*"
+
   DummyCodePipelinePipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -106,15 +128,6 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref DummyCodePipelinePipelineS3BucketName
-    DeletionPolicy: Delete
-
-  AppS3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref AppS3BucketName
-      AccessControl: PublicRead
-      WebsiteConfiguration:
-        IndexDocument: index.html
     DeletionPolicy: Delete
 
   DummyCodeBuildProject:
@@ -163,6 +176,29 @@ Resources:
               RunOrder: 1
         - Name: BuildStage
           Actions:
+            - Name: InfraAction
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              InputArtifacts:
+                - Name: SourceOutputArtifact
+              OutputArtifacts:
+                - Name
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                Capabilities: CAPABILITY_NAMED_IAM
+                RoleArn: !GetAtt DummyCloudFormationRole.Arn
+                StackName: !Sub "${AWS::StackName}"
+                TemplatePath: SourceOutputArtifact::pipeline.yaml
+                ParameterOverrides: !Sub |
+                  {
+                    "DummyGitHubOAuthToken": "${DummyGitHubOAuthToken}",
+                    "AppS3BucketName": "${AppS3BucketName}",
+                    "DummyCodePipelinePipelineS3BucketName": "${DummyCodePipelinePipelineS3BucketName}"
+                  }
+              RunOrder: 1
             - Name: BuildAction
               ActionTypeId:
                 Category: Build
@@ -175,4 +211,14 @@ Resources:
                 - Name: BuildOutputArtifact
               Configuration:
                 ProjectName: !Ref DummyCodeBuildProjectName
-              RunOrder: 1
+              RunOrder: 2
+
+  # App
+  AppS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref AppS3BucketName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+    DeletionPolicy: Delete
