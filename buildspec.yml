@@ -8,12 +8,12 @@ phases:
   build:
     commands:
       - echo "hi there"
-      - echo "omgwtfbbq222" > 1.txt
-  #post_build:
-  #  commands:
-  #    - aws s3 cp 1.txt s3://aws-ci-experiment-artifacts
+      - echo "omgwtfbbq `date`" > index.html
+  post_build:
+    commands:
+      - aws s3 cp index.html s3://$APP_S3_BUCKET_NAME
 
 artifacts:
   files:
-    - 1.txt
+    - index.html
   discard-paths: yes

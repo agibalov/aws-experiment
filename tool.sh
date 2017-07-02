@@ -2,24 +2,29 @@
 
 region=us-east-1
 stackName=AwsCiExperimentStack
-templateBodyFilename=dummy-codebuild.yaml
+templateBodyFilename=codepipeline.yaml
 
 command=$1
 
 if [ "$command" == "" ]; then
   echo "No command specified"
 elif [ "$command" == "create" ]; then
-  echo "CREATING"
+  gitHubOAuthToken=$2
+  if [ "$gitHubOAuthToken" == "" ]; then
+    echo "Please specify GitHub OAuth token"
+  else
+    echo "CREATING"
 
-  aws cloudformation create-stack \
-    --stack-name $stackName \
-    --template-body file://$templateBodyFilename \
-    --region $region \
-    --capabilities CAPABILITY_NAMED_IAM
+    aws cloudformation create-stack \
+      --stack-name $stackName \
+      --template-body file://$templateBodyFilename \
+      --region $region \
+      --capabilities CAPABILITY_NAMED_IAM
 
-  aws cloudformation wait stack-create-complete \
-    --stack-name $stackName \
-    --region $region
+    aws cloudformation wait stack-create-complete \
+      --stack-name $stackName \
+      --region $region
+  fi
 
 elif [ "$command" == "update" ]; then
   echo "UPDATING"

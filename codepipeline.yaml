@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  DummyGitHubOwnerName:
+    Type: String
+    Default: loki2302
+  DummyGitHubRepositoryName:
+    Type: String
+    Default: aws-ci-experiment
+  DummyGitHubOAuthToken:
+    Type: String
+    Description: Should have "repo" and "admin:repo_hook" scopes
+
+  DummyCodeBuildProjectName:
+    Type: String
+    Default: DummyCodeBuildProject
+  AppS3BucketName:
+    Type: String
+    Default: loki2302-s3-bucket
+  DummyCodePipelinePipelineS3BucketName:
+    Type: String
+    Default: dummy-codepipeline-pipeline-s3-bucket
+
+Resources:
+  DummyCodeBuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: DummyCodeBuildProjectRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: ReadAndWriteToAppS3Bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${AppS3BucketName}/*"
+        - PolicyName: ReadAndWriteToDummyCodePipelinePipelineS3Bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectVersioning
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${DummyCodePipelinePipelineS3BucketName}/*"
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${DummyCodeBuildProjectName}:*"
+
+  DummyCodePipelinePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: DummyCodePipelinePipelineRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: ReadAndWriteToDummyCodePipelinePipelineS3Bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectVersioning
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${DummyCodePipelinePipelineS3BucketName}/*"
+        - PolicyName: StartDummyCodeBuildProjectBuilds
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: !GetAtt DummyCodeBuildProject.Arn
+
+  DummyCodePipelinePipelineS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DummyCodePipelinePipelineS3BucketName
+
+  AppS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref AppS3BucketName
+
+  DummyCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref DummyCodeBuildProjectName
+      Description: My dummy CodeBuild project
+      ServiceRole: !GetAtt DummyCodeBuildProjectRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: APP_S3_BUCKET_NAME
+            Value: !Ref AppS3BucketName
+        Image: aws/codebuild/java:openjdk-8
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 5
+
+  DummyCodePipelinePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: DummyCodePipelinePipeline
+      ArtifactStore:
+        Type: S3
+        Location: !Ref DummyCodePipelinePipelineS3Bucket
+      RoleArn: !GetAtt DummyCodePipelinePipelineRole.Arn
+      Stages:
+        - Name: SourceStage
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              OutputArtifacts:
+                - Name: SourceOutputArtifact
+              Configuration:
+                Owner: !Ref DummyGitHubOwnerName
+                Repo: !Ref DummyGitHubRepositoryName
+                Branch: master
+                OAuthToken: !Ref DummyGitHubOAuthToken
+              RunOrder: 1
+        - Name: BuildStage
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceOutputArtifact
+              OutputArtifacts:
+                - Name: BuildOutputArtifact
+              Configuration:
+                ProjectName: !Ref DummyCodeBuildProjectName
+              RunOrder: 1
