@@ -185,7 +185,7 @@ Resources:
               InputArtifacts:
                 - Name: SourceOutputArtifact
               OutputArtifacts:
-                - Name
+                - Name: InfraOutputArtifact
               Configuration:
                 ActionMode: CREATE_UPDATE
                 Capabilities: CAPABILITY_NAMED_IAM
