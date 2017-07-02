@@ -16,10 +16,8 @@ Parameters:
     Default: DummyCodeBuildProject
   AppS3BucketName:
     Type: String
-    Default: loki2302-s3-bucket
   DummyCodePipelinePipelineS3BucketName:
     Type: String
-    Default: dummy-codepipeline-pipeline-s3-bucket
 
 Resources:
   DummyCodeBuildProjectRole:

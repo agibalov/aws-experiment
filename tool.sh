@@ -4,6 +4,9 @@ region=us-east-1
 stackName=AwsCiExperimentStack
 templateBodyFilename=codepipeline.yaml
 
+appS3BucketName=loki2302-s3-bucket
+dummyCodePipelinePipelineS3BucketName=dummy-codepipeline-pipeline-s3-bucket
+
 command=$1
 
 if [ "$command" == "" ]; then
@@ -20,6 +23,8 @@ elif [ "$command" == "create" ]; then
       --template-body file://$templateBodyFilename \
       --parameters \
       ParameterKey=DummyGitHubOAuthToken,ParameterValue=$gitHubOAuthToken \
+      ParameterKey=AppS3BucketName,ParameterValue=$appS3BucketName \
+      ParameterKey=DummyCodePipelinePipelineS3BucketName,ParameterValue=$dummyCodePipelinePipelineS3BucketName \
       --region $region \
       --capabilities CAPABILITY_NAMED_IAM
 
@@ -39,7 +44,10 @@ elif [ "$command" == "update" ]; then
       --stack-name $stackName \
       --template-body file://$templateBodyFilename \
       --parameters \
+      --parameters \
       ParameterKey=DummyGitHubOAuthToken,ParameterValue=$gitHubOAuthToken \
+      ParameterKey=AppS3BucketName,ParameterValue=$appS3BucketName \
+      ParameterKey=DummyCodePipelinePipelineS3BucketName,ParameterValue=$dummyCodePipelinePipelineS3BucketName \
       --capabilities CAPABILITY_NAMED_IAM
 
     aws cloudformation wait stack-update-complete \
@@ -48,6 +56,9 @@ elif [ "$command" == "update" ]; then
 
 elif [ "$command" == "delete" ]; then
   echo "DELETING"
+
+  aws s3 rm s3://$appS3BucketName/ --recursive
+  aws s3 rm s3://$dummyCodePipelinePipelineS3BucketName/ --recursive
 
   aws cloudformation delete-stack \
     --stack-name $stackName \
