@@ -29,15 +29,22 @@ elif [ "$command" == "create" ]; then
   fi
 
 elif [ "$command" == "update" ]; then
-  echo "UPDATING"
+  gitHubOAuthToken=$2
+  if [ "$gitHubOAuthToken" == "" ]; then
+    echo "Please specify GitHub OAuth token"
+  else
+    echo "UPDATING"
 
-  aws cloudformation update-stack \
-    --stack-name $stackName \
-    --template-body file://$templateBodyFilename \
-    --capabilities CAPABILITY_NAMED_IAM
+    aws cloudformation update-stack \
+      --stack-name $stackName \
+      --template-body file://$templateBodyFilename \
+      --parameters \
+      ParameterKey=DummyGitHubOAuthToken,ParameterValue=$gitHubOAuthToken \
+      --capabilities CAPABILITY_NAMED_IAM
 
-  aws cloudformation wait stack-update-complete \
-    --stack-name $stackName
+    aws cloudformation wait stack-update-complete \
+      --stack-name $stackName
+  fi
 
 elif [ "$command" == "delete" ]; then
   echo "DELETING"
