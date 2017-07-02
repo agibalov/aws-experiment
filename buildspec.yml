@@ -9,9 +9,9 @@ phases:
     commands:
       - echo "hi there"
       - echo "omgwtfbbq222" > 1.txt
-  post_build:
-    commands:
-      - aws s3 cp 1.txt s3://aws-ci-experiment-artifacts
+  #post_build:
+  #  commands:
+  #    - aws s3 cp 1.txt s3://aws-ci-experiment-artifacts
 
 artifacts:
   files:
