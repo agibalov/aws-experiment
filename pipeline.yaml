@@ -236,3 +236,12 @@ Resources:
       WebsiteConfiguration:
         IndexDocument: index.html
     DeletionPolicy: Delete
+
+  AppS3Bucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppS3BucketName}TEST"
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+    DeletionPolicy: Delete
