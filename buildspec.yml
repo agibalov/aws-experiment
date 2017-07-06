@@ -8,7 +8,7 @@ phases:
   build:
     commands:
       - echo "hi there"
-      - echo "Hello there `date`" > index.html
+      - echo "$SOMETHING `date`!!!" > index.html
   post_build:
     commands:
       - aws s3 cp index.html s3://$APP_S3_BUCKET_NAME --acl public-read
