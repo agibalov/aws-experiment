@@ -83,6 +83,11 @@ elif [ "$command" == "delete" ]; then
 
   echo "Temporary admin role ARN is $roleArn"
 
+  # Looks like create-role and attach-role-policy operations do something
+  # after finishing. Give them 10 seconds to actually finish whatever
+  # they do there.
+  sleep 10
+
   aws cloudformation delete-stack \
     --role-arn "$roleArn" \
     --stack-name $stackName \
