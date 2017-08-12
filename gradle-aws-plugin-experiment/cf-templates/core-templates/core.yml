@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  SourceBucketName:
+    Type: String
+  TheBucket1Name:
+    Type: String
+  TheBucket2Name:
+    Type: String
+
+Outputs:
+  Bucket1Url:
+    Value: !GetAtt Bucket1Stack.Outputs.BucketUrl
+  Bucket2Url:
+    Value: !GetAtt Bucket2Stack.Outputs.BucketUrl
+
+Resources:
+  Bucket1Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${SourceBucketName}/bucket1.yml"
+      Parameters:
+        TheBucketName: !Ref TheBucket1Name
+
+  Bucket2Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${SourceBucketName}/bucket2.yml"
+      Parameters:
+        TheBucketName: !Ref TheBucket2Name

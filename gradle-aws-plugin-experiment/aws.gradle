@@ -1,0 +1,134 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath "jp.classmethod.aws:gradle-aws-plugin:0.35"
+        classpath group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.86'
+    }
+}
+
+
+import groovy.transform.ToString
+import jp.classmethod.aws.gradle.s3.CreateBucketTask
+import jp.classmethod.aws.gradle.s3.DeleteBucketTask
+import jp.classmethod.aws.gradle.s3.SyncTask
+import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationMigrateStackTask
+import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationDeleteStackTask
+import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationWaitStackStatusTask
+
+import com.amazonaws.services.cloudformation.model.Parameter
+
+class LeetAwsDeploymentPlugin implements Plugin<Project> {
+    List<Parameter> toParameters(Map<String, String> map) {
+        return map.entrySet().collect { e ->
+            return new Parameter().withParameterKey(e.getKey()).withParameterValue(e.getValue())
+        }
+    }
+
+    @Override
+    void apply(Project project) {
+        project.configure(project) {
+            apply plugin: jp.classmethod.aws.gradle.AwsPlugin
+            apply plugin: jp.classmethod.aws.gradle.s3.AmazonS3Plugin
+            apply plugin: jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationPlugin
+        }
+
+        project.extensions.create("leet", LeetExtension, project)
+
+        project.afterEvaluate {
+            Task deployAllTask = project.task('deploy')
+            Task undeployAllTask = project.task('undeploy')
+
+            LeetExtension leetExtension = project.extensions.findByType(LeetExtension)
+            leetExtension.stacks.each { stack ->
+                // DEPLOY
+                String deployTaskName = 'deploy' + stack.name.capitalize()
+                String syncContentTaskName = 'syncContent' + stack.name.capitalize()
+                String createBucketTaskName = 'createBucket' + stack.name.capitalize()
+                String deployCfStackTaskName = 'deployCfStack' + stack.name.capitalize()
+                String waitCfStackDeploymentTaskName = 'waitCfStackDeployment' + stack.name.capitalize()
+                Task deployTask = project.task(deployTaskName, dependsOn: waitCfStackDeploymentTaskName)
+                deployAllTask.dependsOn(deployTask)
+
+                project.task(createBucketTaskName, type: CreateBucketTask).doFirst {
+                    getLogger().quiet("Creating S3 bucket {}", stack.bucketName)
+                    bucketName stack.bucketName
+                    ifNotExists true
+                }
+
+                project.task(syncContentTaskName, type: SyncTask, dependsOn: createBucketTaskName).doFirst {
+                    getLogger().quiet("Syncing CF templates from {} to S3 bucket {}", stack.templatesDirectory, stack.bucketName)
+                    bucketName stack.bucketName
+                    source stack.templatesDirectory
+                }
+
+                project.task(deployCfStackTaskName, type: AmazonCloudFormationMigrateStackTask, dependsOn: syncContentTaskName).doFirst {
+                    getLogger().quiet("Starting CF stack {} migration", stack.bucketName)
+                    stackName stack.name
+                    cfnTemplateUrl "https://s3.amazonaws.com/${stack.bucketName}/${stack.mainTemplateFilename}"
+                    setCfnStackParams(toParameters(stack.parameters))
+                }
+
+                project.task(waitCfStackDeploymentTaskName, type: AmazonCloudFormationWaitStackStatusTask, dependsOn: deployCfStackTaskName).doFirst {
+                    getLogger().quiet("Waiting for CF stack {} to migrate", stack.name)
+                    stackName stack.name
+                }
+
+                // UNDEPLOY
+                String undeployTaskName = 'undeploy' + stack.name.capitalize()
+                String deleteBucketTaskName = 'deleteBucket' + stack.name.capitalize()
+                String undeployCfStackTaskName = 'undeployCfStack' + stack.name.capitalize()
+                String waitCfStackUndeploymentTaskName = 'waitCfStackUndeployment' + stack.name.capitalize()
+                Task undeployTask = project.task(undeployTaskName, dependsOn: deleteBucketTaskName)
+                undeployAllTask.dependsOn(undeployTask)
+
+                project.task(undeployCfStackTaskName, type: AmazonCloudFormationDeleteStackTask).doFirst {
+                    getLogger().quiet("Undeploying CF stack {}", stack.name)
+                    stackName stack.name
+                }
+
+                project.task(waitCfStackUndeploymentTaskName, type: AmazonCloudFormationWaitStackStatusTask, dependsOn: undeployCfStackTaskName).doFirst {
+                    getLogger().quiet("Waiting for CF stack {} to undeploy", stack.name)
+                    stackName stack.name
+                }
+
+                project.task(deleteBucketTaskName, type: DeleteBucketTask, dependsOn: waitCfStackUndeploymentTaskName).doFirst {
+                    getLogger().quiet("Deleting S3 bucket {}", stack.bucketName)
+                    bucketName stack.bucketName
+                    ifExists true
+                    deleteObjects true
+                }
+            }
+        }
+    }
+}
+
+@ToString(includeNames=true)
+class LeetExtension {
+    NamedDomainObjectContainer<StackExtension> stacks
+
+    void stacks(Closure closure) {
+        stacks.configure(closure)
+    }
+
+    LeetExtension(Project project) {
+        this.stacks = project.container(StackExtension)
+    }
+}
+
+@ToString(includeNames=true)
+class StackExtension implements Named {
+    String name
+    String bucketName
+    File templatesDirectory
+    String mainTemplateFilename
+    Map<String, String> parameters = new HashMap<>()
+
+    StackExtension(name) {
+        this.name = name
+    }
+}
+
+apply plugin: LeetAwsDeploymentPlugin

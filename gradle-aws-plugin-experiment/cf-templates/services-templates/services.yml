@@ -1,0 +1,7 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+  MyCoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 23e23e23r2-services-bucket

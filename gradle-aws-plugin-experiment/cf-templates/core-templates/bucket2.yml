@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  TheBucketName:
+    Type: String
+
+Outputs:
+  BucketUrl:
+    Value: !Sub "https://s3.amazonaws.com/${MyBucketTwo}/"
+
+Resources:
+  MyBucketTwo:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref TheBucketName
