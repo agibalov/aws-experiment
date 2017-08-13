@@ -14,6 +14,7 @@ import groovy.transform.ToString
 import jp.classmethod.aws.gradle.s3.CreateBucketTask
 import jp.classmethod.aws.gradle.s3.DeleteBucketTask
 import jp.classmethod.aws.gradle.s3.SyncTask
+import jp.classmethod.aws.gradle.s3.BulkUploadTask
 import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationMigrateStackTask
 import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationDeleteStackTask
 import jp.classmethod.aws.gradle.cloudformation.AmazonCloudFormationWaitStackStatusTask
@@ -46,6 +47,7 @@ class LeetAwsDeploymentPlugin implements Plugin<Project> {
                 // DEPLOY
                 String deployTaskName = 'deploy' + stack.name.capitalize()
                 String syncContentTaskName = 'syncContent' + stack.name.capitalize()
+                String syncBinariesTaskName = 'syncBinaries' + stack.name.capitalize()
                 String createBucketTaskName = 'createBucket' + stack.name.capitalize()
                 String deployCfStackTaskName = 'deployCfStack' + stack.name.capitalize()
                 String waitCfStackDeploymentTaskName = 'waitCfStackDeployment' + stack.name.capitalize()
@@ -64,7 +66,14 @@ class LeetAwsDeploymentPlugin implements Plugin<Project> {
                     source stack.templatesDirectory
                 }
 
-                project.task(deployCfStackTaskName, type: AmazonCloudFormationMigrateStackTask, dependsOn: syncContentTaskName).doFirst {
+                project.task(syncBinariesTaskName, type: BulkUploadTask, dependsOn: syncContentTaskName).doFirst {
+                    getLogger().quiet("Uploading binaries to S3 bucket {}", stack.bucketName)
+                    bucketName stack.bucketName
+                    prefix 'binaries/'
+                    source = stack.binaries ?: project.fileTree('some directory that does not exist')
+                }
+
+                project.task(deployCfStackTaskName, type: AmazonCloudFormationMigrateStackTask, dependsOn: syncBinariesTaskName).doFirst {
                     getLogger().quiet("Starting CF stack {} migration", stack.bucketName)
                     stackName stack.name
                     cfnTemplateUrl "https://s3.amazonaws.com/${stack.bucketName}/${stack.mainTemplateFilename}"
@@ -125,6 +134,7 @@ class StackExtension implements Named {
     File templatesDirectory
     String mainTemplateFilename
     Map<String, String> parameters = new HashMap<>()
+    FileTree binaries
 
     StackExtension(name) {
         this.name = name

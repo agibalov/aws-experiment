@@ -36,8 +36,10 @@ leet {
             parameters = [
                     'SourceBucketName': bucketName,
                     'TheBucket1Name': "${env}-qwerty123qwerty111",
-                    'TheBucket2Name': "${env}-qqq123www111"
+                    'TheBucket2Name': "${env}-qqq123www111",
+                    'LambdaAS3Key': "binaries/${tasks.findByPath(':lambda-a:distZip').archiveName}"
             ]
+            binaries = fileTree(dir: tasks.findByPath(':lambda-a:distZip').destinationDir.path, include: '*.zip')
         }
         services {
             bucketName = "${env}-the-services-stack-bucket"
@@ -45,4 +47,8 @@ leet {
             mainTemplateFilename = 'services.yml'
         }
     }
+}
+
+afterEvaluate {
+    tasks.findByPath('deployCore').dependsOn ':lambda-a:distZip'
 }

@@ -1,0 +1,30 @@
+group 'me.loki2302'
+
+apply plugin: 'java'
+apply plugin: 'distribution'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+distributions {
+    main {
+        contents {
+            into('/') {
+                from compileJava
+            }
+            into('/') {
+                from 'src/main/resources'
+            }
+            into('/lib') {
+                from configurations.runtime
+            }
+        }
+    }
+}

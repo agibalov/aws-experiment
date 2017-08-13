@@ -1,1 +1,3 @@
 rootProject.name = 'gradle-aws-plugin-experiment'
+include 'lambda-a'
+

@@ -7,12 +7,16 @@ Parameters:
     Type: String
   TheBucket2Name:
     Type: String
+  LambdaAS3Key:
+    Type: String
 
 Outputs:
   Bucket1Url:
     Value: !GetAtt Bucket1Stack.Outputs.BucketUrl
   Bucket2Url:
     Value: !GetAtt Bucket2Stack.Outputs.BucketUrl
+  LambdaAS3Key:
+    Value: !Ref LambdaAS3Key
 
 Resources:
   Bucket1Stack:
