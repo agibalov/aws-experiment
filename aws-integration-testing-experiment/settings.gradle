@@ -1,0 +1,3 @@
+rootProject.name = 'aws-integration-testing-experiment'
+include 'lambda-a'
+
