@@ -1,3 +1,5 @@
 rootProject.name = 'aws-integration-testing-experiment'
 include 'lambda-a'
+include 'aws-testability'
+include 'aws-testability-junit'
 

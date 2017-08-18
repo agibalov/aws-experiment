@@ -1,4 +1,4 @@
-package me.loki2302;
+package me.loki2302.awstestability;
 
 import com.amazonaws.services.logs.AWSLogs;
 import com.amazonaws.services.logs.AWSLogsClientBuilder;
@@ -6,25 +6,34 @@ import com.amazonaws.services.logs.model.FilterLogEventsRequest;
 import com.amazonaws.services.logs.model.FilterLogEventsResult;
 import com.amazonaws.services.logs.model.FilteredLogEvent;
 import org.junit.rules.ExternalResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 public class CloudWatchLogs extends ExternalResource {
-    private long startTimestamp;
+    private final static Logger LOGGER = LoggerFactory.getLogger(CloudWatchLogs.class);
+    private long testStartTimestamp;
+    private Map<String, Long> logTimesByLogGroupNames;
 
     @Override
     protected void before() throws Throwable {
-        startTimestamp = System.currentTimeMillis();
+        testStartTimestamp = System.currentTimeMillis();
+        logTimesByLogGroupNames = new HashMap<>();
     }
 
-    public void waitForMarker(String logGroupName, String marker) {
+    public <T> T read(String logGroupName, Class<T> clazz, Duration waitDuration) throws TimeoutException {
+        logTimesByLogGroupNames.putIfAbsent(logGroupName, testStartTimestamp);
+        long startTimestamp = logTimesByLogGroupNames.get(logGroupName);
+
         AWSLogs awsLogs = AWSLogsClientBuilder.defaultClient();
 
         Set<String> eventIds = new HashSet<>();
         String nextToken = null;
-        while(true) {
+        long t0 = System.currentTimeMillis();
+        while(System.currentTimeMillis() - t0 < waitDuration.toMillis()) {
             FilterLogEventsRequest filterLogEventsRequest = new FilterLogEventsRequest();
             filterLogEventsRequest.setLogGroupName(logGroupName);
             filterLogEventsRequest.setStartTime(startTimestamp);
@@ -39,12 +48,14 @@ public class CloudWatchLogs extends ExternalResource {
 
                 eventIds.add(eventId);
 
-                String streamName = filteredLogEvent.getLogStreamName();
                 String message = filteredLogEvent.getMessage().trim();
-                System.out.printf("%s: %s\n", streamName, message);
-                if(message.contains(marker)) {
+                LOGGER.info("CloudWatch: {}", message);
+                if(AwsTestability.hasMarker(message)) {
+                    T result = AwsTestability.readString(message, clazz);
+                    LOGGER.info("Extracted: {}", result);
                     startTimestamp = System.currentTimeMillis();
-                    return;
+                    logTimesByLogGroupNames.put(logGroupName, startTimestamp);
+                    return result;
                 }
             }
 
@@ -59,5 +70,7 @@ public class CloudWatchLogs extends ExternalResource {
                 nextToken = token;
             }
         }
+
+        throw new TimeoutException();
     }
 }

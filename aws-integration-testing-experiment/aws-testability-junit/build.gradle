@@ -1,0 +1,19 @@
+group 'me.loki2302'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.178'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.178'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-logs', version: '1.11.178'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    compile project(':aws-testability')
+}

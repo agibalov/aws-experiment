@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  LambdaS3BucketName:
+    Type: String
+  LambdaS3Key:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+
+Outputs:
+  LambdaAFunctionLogGroup:
+    Value: !Sub "/aws/lambda/${LambdaAFunction}"
+
+Resources:
+  LambdaAFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: LambdaAFunction
+      Handler: me.loki2302.MyLambdaHandler::handle
+      Role: !Ref LambdaRoleArn
+      Code:
+        S3Bucket: !Ref LambdaS3BucketName
+        S3Key: !Ref LambdaS3Key
+      Runtime: java8
+      MemorySize: 128
+      Timeout: 60
+
+  LambdaAFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaAFunction}"
+      RetentionInDays: 1

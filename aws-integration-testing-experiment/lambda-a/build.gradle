@@ -12,6 +12,14 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.178'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.178'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-logs', version: '1.11.178'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-lambda', version: '1.11.178'
+    testCompile project(':aws-testability-junit')
+
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    compile project(':aws-testability')
 }
 
 distributions {
@@ -28,4 +36,18 @@ distributions {
             }
         }
     }
+}
+
+test {
+    exclude 'me/loki2302/integration/**'
+}
+
+task integrationTest(type: Test) {
+    group 'verification'
+    useJUnit()
+    dependsOn 'distZip'
+    environment 'AWS_REGION', 'us-east-1'
+    systemProperty 'lambdaAZipFilename', distZip.archivePath
+    systemProperty 'templatesDirectory', rootProject.file('templates')
+    include 'me/loki2302/integration/**'
 }
