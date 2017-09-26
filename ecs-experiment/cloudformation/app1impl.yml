@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EcsClusterName:
+    Type: String
+  Image:
+    Type: String
+  Vpc:
+    Type: String
+  AlbSecurityGroup:
+    Type: String
+  Az1PublicSubnet:
+    Type: String
+  Az2PublicSubnet:
+    Type: String
+  MyContainerName:
+    Type: String
+    Default: App1Container
+
+Outputs:
+  AppUrl:
+    Value: !Sub "http://${App1LoadBalancer.DNSName}/"
+
+Resources:
+  App1User:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+
+  App1UserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref App1User
+
+  App1LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: App1LogGroup
+      RetentionInDays: 1
+
+  App1TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: App1TaskDefinition
+      NetworkMode: bridge
+      ContainerDefinitions:
+        - Name: !Ref MyContainerName
+          Memory: 256
+          PortMappings:
+            - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref App1LogGroup
+              awslogs-region: !Ref AWS::Region
+          Image: !Ref Image
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: AWS_ACCESS_KEY
+              Value: !Ref App1UserAccessKey
+            - Name: AWS_SECRET_KEY
+              Value: !GetAtt App1UserAccessKey.SecretAccessKey
+
+  App1EcsService:
+    Type: AWS::ECS::Service
+    DependsOn: App1LoadBalancerListener
+    Properties:
+      ServiceName: App1EcsService
+      Cluster: !Ref EcsClusterName
+      TaskDefinition: !Ref App1TaskDefinition
+      DesiredCount: 2
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      Role: !Ref App1EcsServiceRole
+      LoadBalancers:
+        - ContainerName: !Ref MyContainerName
+          ContainerPort: 8080
+          TargetGroupArn: !Ref App1TargetGroup
+
+  App1EcsServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: App1EcsServiceRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
+
+  App1LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: App1LoadBalancer
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Subnets:
+        - !Ref Az1PublicSubnet
+        - !Ref Az2PublicSubnet
+      Scheme: internet-facing
+
+  App1TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: App1TargetGroup
+      VpcId: !Ref Vpc
+      Port: 80
+      Protocol: HTTP
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 10
+
+  App1LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref App1LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref App1TargetGroup

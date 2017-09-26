@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EcsStackName:
+    Type: String
+  Image:
+    Type: String
+
+Outputs:
+  App1Url:
+    Value: !GetAtt App1Stack.Outputs.AppUrl
+
+Resources:
+  App1Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: app1impl.yml
+      Parameters:
+        Image: !Ref Image
+        EcsClusterName:
+          Fn::ImportValue: !Sub "${EcsStackName}-EcsClusterName"
+        Vpc:
+          Fn::ImportValue: !Sub "${EcsStackName}-Vpc"
+        AlbSecurityGroup:
+          Fn::ImportValue: !Sub "${EcsStackName}-AlbSecurityGroup"
+        Az1PublicSubnet:
+          Fn::ImportValue: !Sub "${EcsStackName}-Az1PublicSubnet"
+        Az2PublicSubnet:
+          Fn::ImportValue: !Sub "${EcsStackName}-Az2PublicSubnet"
