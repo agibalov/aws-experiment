@@ -52,6 +52,17 @@ elif [ "${command}" == "deploy-app1-ecr" ]; then
     EcrRepositoryName=${App1EcrRepositoryName}
 
 elif [ "${command}" == "undeploy-app1-ecr" ]; then
+  imageIds=$(aws ecr list-images \
+    --repository-name ${App1EcrRepositoryName} \
+    --query 'imageIds[].[imageDigest]' \
+    --output=text \
+    --region ${Region} | sed -E 's/(.+)/imageDigest=\1/')
+
+  aws ecr batch-delete-image \
+    --repository-name ${App1EcrRepositoryName} \
+    --image-ids ${imageIds} \
+    --region ${Region}
+
   undeploy_stack ${App1EcrStackName}
 
 elif [ "${command}" == "deploy-app1" ]; then
