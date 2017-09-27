@@ -155,9 +155,9 @@ Resources:
     Properties:
       VPCZoneIdentifier: [ !Join [",", [ !Ref Az1PublicSubnet, !Ref Az2PublicSubnet ]] ]
       LaunchConfigurationName: !Ref EcsInstanceLaunchConfiguration
-      MinSize: "2"
-      MaxSize: "2"
-      DesiredCapacity: "2"
+      MinSize: "1"
+      MaxSize: "1"
+      DesiredCapacity: "1"
       Tags:
         - Key: Name
           Value: EcsInstanceAutoScalingGroup

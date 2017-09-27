@@ -32,3 +32,9 @@ An ECS hello world.
   }
 ]
 ```
+
+## Notes
+
+* Both the application and the database belong to one `TaskDefinition`, which means that you can't scale them independently (e.g. 10 instances of your app working with just 1 instance of the database). That's because either you use Docker's "links" to let your containers talk to each other, or you implement your own service discovery. Because I use the "links" feature, I have to keep both my containers on the same EC2 instance.
+
+* The database's data gets lost when the container is restarted (as expected!), but it appears that there are no straightforward options to persist the data. The easiest would be to use Docker's "volumes" to expose EC2's directory to the container, but in this case you'll have to make sure that database container always runs on that particular EC2 instance.
