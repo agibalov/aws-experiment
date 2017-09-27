@@ -1,0 +1,29 @@
+<!doctype html>
+<html ng-app="app">
+    <head>
+        <title>Hello World</title>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular-csp.css">
+    </head>
+    <body ng-controller="AppController as appController">
+        <p>{{appController.message}}</p>
+        <button type="button" ng-click="appController.onButtonClicked()">Get data from BE</button>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+        <script>
+            angular.module('app', [])
+                .controller('AppController', ['$http', function($http) {
+                    var self = this;
+                    self.message = 'Go ahead and click the button';
+                    self.onButtonClicked = function() {
+                        self.message = 'Loading...';
+                        $http.get('/hello').then(function(response) {
+                            var body = response.data;
+                            self.message = 'BE says: ' + body.message;
+                        }, function(response) {
+                            self.message = 'Error!';
+                        });
+                    };
+                }]);
+        </script>
+    </body>
+</html>

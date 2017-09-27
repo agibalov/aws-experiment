@@ -17,7 +17,7 @@ public class App {
 
     @RestController
     public static class ApiController {
-        @GetMapping("/")
+        @GetMapping("/hello")
         public Map<String, String> hello() {
             return Collections.singletonMap("message", "Hello there " + new Date() + "!!!");
         }
