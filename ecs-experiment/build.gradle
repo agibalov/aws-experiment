@@ -13,5 +13,17 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.203'
+
     compile group: 'org.springframework.boot', name: 'spring-boot-starter-web'
+}
+
+test {
+    exclude 'me/loki2302/aws/**'
+}
+
+task awsTest(type: Test) {
+    useJUnit()
+    include 'me/loki2302/aws/**'
 }
