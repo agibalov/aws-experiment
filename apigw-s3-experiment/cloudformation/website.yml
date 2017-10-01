@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  WebsiteBucketName:
+    Type: String
+  WebsiteApiStageName:
+    Type: String
+
+Outputs:
+  WebsiteUrl:
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${WebsiteApiStageName}"
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref WebsiteBucketName
+    DeletionPolicy: Delete
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+  Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: WebsiteApi
+      Body:
+        swagger: "2.0"
+        paths:
+          /:
+            get:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode": 200
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: "{\"hey\":\"there\"}"
+              responses:
+                "200": {}
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              parameters:
+                - name: proxy
+                  in: path
+                  require: true
+                  type: string
+              responses:
+                "200":
+                  headers:
+                    Content-Type:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: aws
+                credentials: !GetAtt ApiRole.Arn
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Content-Type: "integration.response.header.Content-Type"
+                httpMethod: GET
+                requestParameters:
+                  integration.request.path.key: "method.request.path.proxy"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:s3:path/${WebsiteBucket}/{key}"
+                passthroughBehavior: when_no_match
+                
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref Api
+      StageName: !Ref WebsiteApiStageName
