@@ -38,7 +38,7 @@ Resources:
       Body:
         swagger: "2.0"
         paths:
-          /:
+          /api/dummy:
             get:
               x-amazon-apigateway-integration:
                 type: mock
@@ -55,7 +55,7 @@ Resources:
               responses:
                 "200": {}
           /{proxy+}:
-            x-amazon-apigateway-any-method:
+            get:
               parameters:
                 - name: proxy
                   in: path
