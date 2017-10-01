@@ -79,7 +79,10 @@ Resources:
                   integration.request.path.key: "method.request.path.proxy"
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:s3:path/${WebsiteBucket}/{key}"
                 passthroughBehavior: when_no_match
-                
+        x-amazon-apigateway-binary-media-types:
+          - image/png
+          - image/jpeg
+
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     Properties:
