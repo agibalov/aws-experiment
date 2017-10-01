@@ -59,7 +59,7 @@ Resources:
               parameters:
                 - name: proxy
                   in: path
-                  require: true
+                  required: true
                   type: string
               responses:
                 "200":
@@ -80,6 +80,11 @@ Resources:
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:s3:path/${WebsiteBucket}/{key}"
                 passthroughBehavior: when_no_match
         x-amazon-apigateway-binary-media-types:
+          # http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-payload-encodings-workflow.html
+          # YOU HAVE TO HAVE these webp and apng, even if you only care about png and jpeg
+          # Basically, this list should have whatever your browser puts to Accept header when it wants an image
+          - image/webp
+          - image/apng
           - image/png
           - image/jpeg
 
