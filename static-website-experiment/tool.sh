@@ -1,30 +1,51 @@
 #!/bin/bash
 
-region=us-west-1
-stackName=dummy-stack
-bucketName=loki2302-dummy-bucket
+region=us-east-1
+stackName=dummy-stack1
+bucketName=loki2302-dummy-bucket1
 
 command=$1
 
+get_stack_output() {
+  stackName=$1
+  outputName=$2
+  aws cloudformation describe-stacks \
+    --stack-name ${stackName} \
+    --query 'Stacks[0].Outputs[?OutputKey==`'${outputName}'`].OutputValue' \
+    --output text \
+    --region ${region}
+}
+
 if [ "$command" == "" ]; then
   echo "No command specified"
-elif [ "$command" == "deploy" ]; then
+elif [ "$command" == "deploy-basic" ]; then
   echo "DEPLOYING"
 
-  aws cloudformation create-stack \
-    --stack-name $stackName \
-    --template-body file://basic.yml \
-    --region $region \
+  aws cloudformation deploy \
+    --template-file basic.yml \
+    --stack-name ${stackName} \
     --capabilities CAPABILITY_IAM \
-    --parameters ParameterKey=MyBucketName,ParameterValue=$bucketName
-
-  aws cloudformation wait stack-create-complete \
-    --stack-name $stackName \
-    --region $region
+    --region ${region} \
+    --parameter-overrides \
+    MyBucketName=$bucketName
 
   aws s3 cp public s3://$bucketName/ \
     --recursive \
     --acl public-read
+
+elif [ "$command" == "deploy-restricted" ]; then
+  echo "DEPLOYING"
+
+  aws cloudformation deploy \
+    --template-file restricted.yml \
+    --stack-name ${stackName} \
+    --capabilities CAPABILITY_IAM \
+    --region ${region} \
+    --parameter-overrides \
+    MyBucketName=$bucketName
+
+  aws s3 cp public s3://$bucketName/ \
+    --recursive
 
 elif [ "$command" == "undeploy" ]; then
   echo "UNDEPLOYING"
@@ -43,9 +64,16 @@ elif [ "$command" == "undeploy" ]; then
 elif [ "$command" == "test" ]; then
   echo "TESTING"
 
-  url="http://$bucketName.s3-website-$region.amazonaws.com"
+  url=$(get_stack_output ${stackName} "WebsiteURL")
   echo "The page is right here: $url"
+
+  echo
+  echo "curl"
   curl $url
+
+  echo
+  echo "curl with user-agent"
+  curl -A "hello there secret123 test" $url
 
 else
   echo "Unknown command '$command'"

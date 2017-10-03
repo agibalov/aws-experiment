@@ -19,3 +19,17 @@ Resources:
         IndexDocument: index.html
         ErrorDocument: error.html
     DeletionPolicy: Delete
+
+  DummyBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DummyBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub "${DummyBucket.Arn}/*"
+            Principal: "*"
+            Condition:
+              StringLike:
+                aws:UserAgent: "*secret123*"
