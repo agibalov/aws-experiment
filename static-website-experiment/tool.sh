@@ -13,7 +13,7 @@ elif [ "$command" == "deploy" ]; then
 
   aws cloudformation create-stack \
     --stack-name $stackName \
-    --template-body file://dummy.template \
+    --template-body file://basic.yml \
     --region $region \
     --capabilities CAPABILITY_IAM \
     --parameters ParameterKey=MyBucketName,ParameterValue=$bucketName

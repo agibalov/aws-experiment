@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  MyBucketName:
+    Type: String
+
+Resources:
+  DummyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName:
+        Ref: MyBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Delete
