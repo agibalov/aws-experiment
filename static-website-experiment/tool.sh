@@ -33,6 +33,21 @@ elif [ "$command" == "deploy-basic" ]; then
     --recursive \
     --acl public-read
 
+elif [ "$command" == "deploy-spa" ]; then
+  echo "DEPLOYING"
+
+  aws cloudformation deploy \
+    --template-file spa.yml \
+    --stack-name ${stackName} \
+    --capabilities CAPABILITY_IAM \
+    --region ${region} \
+    --parameter-overrides \
+    MyBucketName=$bucketName
+
+  aws s3 cp public s3://$bucketName/ \
+    --recursive \
+    --acl public-read
+
 elif [ "$command" == "deploy-restricted" ]; then
   echo "DEPLOYING"
 
