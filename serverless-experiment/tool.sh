@@ -29,7 +29,14 @@ elif [ "$command" == "deploy" ]; then
     --parameter-overrides \
     WebsiteBucketName=${websiteBucketName}
 
-  aws s3 cp public s3://${websiteBucketName}/ --recursive --acl public-read
+  aws s3 sync public s3://${websiteBucketName}/ --delete --acl public-read
+
+  # Create new API deployment manually - CloudFormation DOESN'T do it
+  restApiId=$(get_stack_output ${stackName} "RestApiId")
+  restApiStageName=$(get_stack_output ${stackName} "RestApiStageName")
+  aws apigateway create-deployment \
+    --rest-api-id ${restApiId} \
+    --stage-name ${restApiStageName}
 
   websiteUrl=$(get_stack_output ${stackName} "WebsiteUrl")
   restApiUrl=$(get_stack_output ${stackName} "RestApiUrl")

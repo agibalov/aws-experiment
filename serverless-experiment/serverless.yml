@@ -9,6 +9,10 @@ Outputs:
     Value: !GetAtt WebsiteBucket.WebsiteURL
   RestApiUrl:
     Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}"
+  RestApiId:
+    Value: !Ref RestApi
+  RestApiStageName:
+    Value: !Ref RestApiStage
 
 Resources:
   WebsiteBucket:
