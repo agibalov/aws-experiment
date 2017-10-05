@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  WebsiteBucketName:
+    Type: String
+
+Outputs:
+  WebsiteUrl:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+  RestApiUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}"
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref WebsiteBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+    DeletionPolicy: Delete
+
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: RestApi
+      Body:
+        swagger: "2.0"
+        paths:
+          /test:
+            get:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode": 200
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers : "'*'"
+                      method.response.header.Access-Control-Allow-Methods : "'*'"
+                      method.response.header.Access-Control-Allow-Origin : "'*'"
+                    responseTemplates:
+                      application/json: !Sub |
+                        {
+                          "message": "hi there! Website bucket name is ${WebsiteBucketName}"
+                        }
+              responses:
+                "200":
+                  headers:
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Origin:
+                      type: string
+
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      StageName: DummyStagePleaseIgnore
+
+  RestApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref RestApiDeployment
+      StageName: Dummy

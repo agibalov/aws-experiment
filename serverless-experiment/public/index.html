@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Hello World</title>
+    <base href="/">
+  </head>
+  <body>
+    <h1>Hello World</h1>
+    <div ng-view></div>
+
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular-route.min.js"></script>
+    <script>
+      angular.module('app', ['ngRoute'])
+        .config(['$locationProvider', function($locationProvider) {
+          $locationProvider.html5Mode(true);
+        }])
+        .config(['$routeProvider', function($routeProvider) {
+          $routeProvider
+            .when('/', {
+              template: `
+              index page here. Link to <a href="/page1">page1</a>.
+              <p>API URL: {{apiUrl}}</p>
+              <p>Message: {{message}}</p>
+              <button type="button" ng-click="getData()">Push me</button>
+              `,
+              controller: 'IndexController'
+            })
+            .when('/page1', {
+              template: `page 1 here. Link to <a href="/">index page</a>.`
+            })
+            .otherwise({
+              redirectTo: '/'
+            });
+        }])
+        .controller('IndexController', ['$scope', '$http', 'apiUrl', function($scope, $http, apiUrl) {
+          $scope.apiUrl = apiUrl;
+          $scope.message = '';
+          $scope.getData = function() {
+            $scope.message = 'Loading...';
+            $http.get(apiUrl + '/test').then(function(response) {
+              $scope.message = response.data.message;
+            }, function(response) {
+              $scope.message = 'Error';
+            });
+          };
+        }]);
+
+      angular.injector(['ng']).invoke(['$http', function($http) {
+        $http.get('/config.json').then(function(response) {
+          var apiUrl = response.data['apiUrl'];
+          angular.module('app')
+            .constant('apiUrl', apiUrl);
+
+          angular.bootstrap(document, ['app']);
+        }, function(response) {
+          console.log('Failed to get /config.json');
+        });
+      }]);      
+    </script>
+  </body>
+</html>
