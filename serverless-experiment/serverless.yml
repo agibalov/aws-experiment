@@ -108,6 +108,14 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: "*"
+      - PolicyName: ReadAndWriteDynamoDb
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - dynamodb:*
+            Resource: "*"
 
   ApiHandlerLambdaFunction:
     Type: AWS::Lambda::Function
@@ -121,3 +129,17 @@ Resources:
       Environment:
         Variables:
           APP_MESSAGE_SUFFIX: !Sub "Website bucket name is ${WebsiteBucketName}"
+          APP_TODOS_TABLE_NAME: !Ref TodosTable
+
+  TodosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
