@@ -3,32 +3,62 @@ package me.loki2302;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.datamodeling.*;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiOperation;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
-import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 import java.util.UUID;
 
 @Configuration
-@ComponentScan
 @EnableWebMvc
 @EnableConfigurationProperties
+@EnableSwagger2
 public class AppConfig {
     @Bean
     public AppProperties appProperties() {
         return new AppProperties();
+    }
+
+    @Bean
+    public Docket api() {
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apiInfo())
+                .useDefaultResponseMessages(false)
+                .select()
+                .build();
+    }
+
+    @Bean
+    public ApiInfo apiInfo() {
+        return new ApiInfoBuilder()
+                .title("My API title")
+                .contact(new Contact(
+                        "loki2302",
+                        "http://loki2302.me",
+                        "loki2302@loki2302.me"))
+                .description("My API description")
+                .license("My API license")
+                .licenseUrl("http://retask.me/license")
+                .termsOfServiceUrl("http://retask.me/tos")
+                .version("My API version")
+                .build();
     }
 
     @Bean
@@ -45,8 +75,8 @@ public class AppConfig {
     }
 
     @RestController
-    @CrossOrigin
-    public class DummyController {
+    @Api(value = "Dummy controller", description = "Some dummy controller")
+    public static class DummyController {
         @Autowired
         private AppProperties appProperties;
 
@@ -54,7 +84,8 @@ public class AppConfig {
         private DynamoDBTableMapper<TodoItem, String, ?> todoItemTableMapper;
 
         @GetMapping("/test")
-        public Map<String, String> index() {
+        @ApiOperation(value = "Do test", notes = "Do some stuff, provide some response")
+        public TestResponseDto index() {
             TodoItem todoItem = new TodoItem();
             todoItem.id = UUID.randomUUID().toString();
             todoItem.text = String.format("Todo %s", new Date());
@@ -65,7 +96,10 @@ public class AppConfig {
                     new Date(),
                     appProperties.getMessageSuffix(),
                     count);
-            return Collections.singletonMap("message", message);
+
+            TestResponseDto testResponseDto = new TestResponseDto();
+            testResponseDto.setMessage(message);
+            return testResponseDto;
         }
     }
 
@@ -86,5 +120,12 @@ public class AppConfig {
 
         @DynamoDBAttribute
         private String text;
+    }
+
+    @ApiModel("TestResponse")
+    @NoArgsConstructor
+    @Data
+    public static class TestResponseDto {
+        private String message;
     }
 }

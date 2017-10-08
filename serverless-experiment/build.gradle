@@ -12,6 +12,7 @@ dependencies {
     compile 'org.springframework.boot:spring-boot-starter-web:1.5.7.RELEASE'
     compile 'com.amazonaws.serverless:aws-serverless-java-container-spring:0.7'
     compile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.210'
+    compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.7.0'
     compileOnly 'org.projectlombok:lombok:1.16.18'
 }
 

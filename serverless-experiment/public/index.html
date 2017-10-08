@@ -21,8 +21,9 @@
               template: `
               index page here. Link to <a href="/page1">page1</a>.
               <p>API URL: {{apiUrl}}</p>
-              <p>Message: {{message}}</p>
-              <button type="button" ng-click="getData()">Push me</button>
+              <p>Message: {{message|json}}</p>
+              <button type="button" ng-click="getData('/test')">GET /test</button>
+              <button type="button" ng-click="getData('/v2/api-docs')">GET /v2/api-docs</button>
               `,
               controller: 'IndexController'
             })
@@ -36,10 +37,10 @@
         .controller('IndexController', ['$scope', '$http', 'apiUrl', function($scope, $http, apiUrl) {
           $scope.apiUrl = apiUrl;
           $scope.message = '';
-          $scope.getData = function() {
+          $scope.getData = function(suffix) {
             $scope.message = 'Loading...';
-            $http.get(apiUrl + '/test').then(function(response) {
-              $scope.message = response.data.message;
+            $http.get(apiUrl + suffix).then(function(response) {
+              $scope.message = response.data;
             }, function(response) {
               $scope.message = 'Error';
             });
