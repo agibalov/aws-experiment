@@ -25,6 +25,26 @@ Resources:
         ErrorDocument: index.html
     DeletionPolicy: Delete
 
+  RestApiIntegrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: InvokeLambdas
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: "*"
+
   RestApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -32,36 +52,20 @@ Resources:
       Body:
         swagger: "2.0"
         paths:
-          /test:
-            get:
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              parameters:
+              - name: proxy
+                in: path
+                required: true
+                type: string
+              responses: {}
               x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates:
-                  application/json: |
-                    {
-                      "statusCode": 200
-                    }
-                responses:
-                  default:
-                    statusCode: "200"
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers : "'*'"
-                      method.response.header.Access-Control-Allow-Methods : "'*'"
-                      method.response.header.Access-Control-Allow-Origin : "'*'"
-                    responseTemplates:
-                      application/json: !Sub |
-                        {
-                          "message": "hi there! Website bucket name is ${WebsiteBucketName}"
-                        }
-              responses:
-                "200":
-                  headers:
-                    Access-Control-Allow-Headers:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Origin:
-                      type: string
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
 
   RestApiDeployment:
     Type: AWS::ApiGateway::Deployment
@@ -75,3 +79,45 @@ Resources:
       RestApiId: !Ref RestApi
       DeploymentId: !Ref RestApiDeployment
       StageName: Dummy
+
+  ApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  ApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: WriteLogs
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: "*"
+
+  ApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: me.loki2302.AwsLambdaHandler::handleRequest
+      Role: !GetAtt ApiHandlerRole.Arn
+      Code: build/distributions/serverless-experiment.zip
+      Runtime: java8
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          APP_MESSAGE_SUFFIX: !Sub "Website bucket name is ${WebsiteBucketName}"

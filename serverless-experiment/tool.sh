@@ -2,6 +2,7 @@
 
 region=us-east-1
 stackName=dummy-stack1
+deploymentBucketName=loki2302-deployment1
 websiteBucketName=loki2302-dummy-bucket1
 
 command=$1
@@ -21,8 +22,17 @@ if [ "$command" == "" ]; then
 elif [ "$command" == "deploy" ]; then
   echo "DEPLOYING"
 
-  aws cloudformation deploy \
+  ./gradlew clean build
+
+  aws s3 mb s3://${deploymentBucketName} --region ${region}
+
+  aws cloudformation package \
     --template-file serverless.yml \
+    --s3-bucket ${deploymentBucketName} \
+    --output-template-file _packaged.yml
+
+  aws cloudformation deploy \
+    --template-file _packaged.yml \
     --stack-name ${stackName} \
     --capabilities CAPABILITY_IAM \
     --region ${region} \
@@ -58,6 +68,9 @@ elif [ "$command" == "undeploy" ]; then
   aws cloudformation wait stack-delete-complete \
     --stack-name ${stackName} \
     --region ${region}
+
+  aws s3 rm s3://${deploymentBucketName}/ --recursive
+  aws s3 rb s3://${deploymentBucketName} --force
 
 else
   echo "Unknown command '$command'"

@@ -1,1 +1,6 @@
+.gradle
+.idea
+build
+*.iml
+_packaged.yml
 config.json
