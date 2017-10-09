@@ -71,31 +71,18 @@ Resources:
                 httpMethod: POST
                 passthroughBehavior: when_no_match
             options:
+              parameters:
+              - name: proxy
+                in: path
+                required: true
+                type: string
+              responses: {}
               x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates:
-                  application/json: |
-                    {
-                      "statusCode": 200
-                    }
-                responses:
-                  default:
-                    statusCode: "200"
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers : "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-requested-with'"
-                      method.response.header.Access-Control-Allow-Methods : "'POST,GET,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin : "'*'"
-                    responseTemplates:
-                      application/json: "{}"
-              responses:
-                "200":
-                  headers:
-                    Access-Control-Allow-Headers:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Origin:
-                      type: string
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
         securityDefinitions:
           api-key-header:
             type: apiKey

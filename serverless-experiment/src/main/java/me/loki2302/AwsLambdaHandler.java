@@ -5,8 +5,6 @@ import com.amazonaws.serverless.proxy.internal.model.AwsProxyRequest;
 import com.amazonaws.serverless.proxy.internal.model.AwsProxyResponse;
 import com.amazonaws.serverless.proxy.spring.SpringLambdaContainerHandler;
 import com.amazonaws.services.lambda.runtime.Context;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 
 import javax.servlet.*;
@@ -16,7 +14,6 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 public class AwsLambdaHandler {
-    private final static Logger LOGGER = LoggerFactory.getLogger(AwsLambdaHandler.class);
     private static SpringLambdaContainerHandler<AwsProxyRequest, AwsProxyResponse> handler;
 
     public static AwsProxyResponse handleRequest(AwsProxyRequest input, Context context) {
@@ -53,19 +50,24 @@ public class AwsLambdaHandler {
 
         @Override
         public void doFilter(
-                ServletRequest request,
-                ServletResponse response,
+                ServletRequest servletRequest,
+                ServletResponse servletResponse,
                 FilterChain chain) throws IOException, ServletException {
 
-            HttpServletRequest httpServletRequest = (HttpServletRequest)request;
-            String origin = httpServletRequest.getHeader(HttpHeaders.ORIGIN);
+            HttpServletRequest request = (HttpServletRequest)servletRequest;
+            String origin = request.getHeader(HttpHeaders.ORIGIN);
             if(origin != null) {
-                HttpServletResponse httpServletResponse = (HttpServletResponse)response;
-                httpServletResponse.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
+                String accessControlRequestHeaders = request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS);
+                String accessControlRequestMethod = request.getHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD);
+
+                HttpServletResponse response = (HttpServletResponse)servletResponse;
+                response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
+                response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, accessControlRequestHeaders);
+                response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, accessControlRequestMethod);
                 return;
             }
 
-            chain.doFilter(request, response);
+            chain.doFilter(servletRequest, servletResponse);
         }
 
         @Override
