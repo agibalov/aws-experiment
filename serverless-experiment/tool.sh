@@ -23,6 +23,10 @@ elif [ "$command" == "deploy" ]; then
   echo "DEPLOYING"
 
   ./gradlew clean build
+  if [ $? != 0 ]; then
+    echo "Build failed"
+    exit 1
+  fi
 
   aws s3 mb s3://${deploymentBucketName} --region ${region}
 
@@ -40,6 +44,7 @@ elif [ "$command" == "deploy" ]; then
     WebsiteBucketName=${websiteBucketName}
 
   aws s3 sync public s3://${websiteBucketName}/ --delete --acl public-read
+  aws s3 cp build/api.json s3://${websiteBucketName}/docs/ --acl public-read
 
   # Create new API deployment manually - CloudFormation DOESN'T do it
   restApiId=$(get_stack_output ${stackName} "RestApiId")
@@ -53,8 +58,12 @@ elif [ "$command" == "deploy" ]; then
   echo "Website URL: ${websiteUrl}"
   echo "REST API URL: ${restApiUrl}"
 
-  jq -n --arg apiUrl ${restApiUrl} '{"apiUrl":$apiUrl}' > config.json
-  aws s3 cp config.json s3://${websiteBucketName}/ --acl public-read  
+  restApiKeyId=$(get_stack_output ${stackName} "RestApiKeyId")
+  restApiKey=$(aws apigateway get-api-key --api-key ${restApiKeyId} \
+    --output text --include-value --query 'value')
+
+  jq -n --arg apiUrl ${restApiUrl} --arg apiKey ${restApiKey} '{"apiUrl":$apiUrl,"apiKey":$apiKey}' > config.json
+  aws s3 cp config.json s3://${websiteBucketName}/ --acl public-read
 
 elif [ "$command" == "undeploy" ]; then
   echo "UNDEPLOYING"

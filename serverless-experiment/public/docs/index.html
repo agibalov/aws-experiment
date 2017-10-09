@@ -11,28 +11,21 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.3.1/swagger-ui-bundle.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.3.1/swagger-ui-standalone-preset.js"></script>
         <script>
-            angular.injector(['ng']).invoke(['$http', function($http) {
-                $http.get('/config.json').then(function(response) {
-                    var apiUrl = response.data['apiUrl'];
+            const ui = SwaggerUIBundle({
+                url: "api.json",
+                dom_id: "#swagger-ui",
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout"
+            });
 
-                    const ui = SwaggerUIBundle({
-                        url: apiUrl + "/v2/api-docs",
-                        dom_id: "#swagger-ui",
-                        deepLinking: true,
-                        presets: [
-                            SwaggerUIBundle.presets.apis,
-                            SwaggerUIStandalonePreset
-                        ],
-                        plugins: [
-                            SwaggerUIBundle.plugins.DownloadUrl
-                        ],
-                        layout: "StandaloneLayout"
-                    });
-                    window.ui = ui;
-                }, function(response) {
-                    console.log('Failed to get /config.json');
-                });
-            }]);
+            window.ui = ui;
         </script>
     </body>
 </html>

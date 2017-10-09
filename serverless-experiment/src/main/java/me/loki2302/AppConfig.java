@@ -16,12 +16,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.service.ApiInfo;
-import springfox.documentation.service.Contact;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import java.util.Date;
 import java.util.UUID;
@@ -29,36 +23,10 @@ import java.util.UUID;
 @Configuration
 @EnableWebMvc
 @EnableConfigurationProperties
-@EnableSwagger2
 public class AppConfig {
     @Bean
     public AppProperties appProperties() {
         return new AppProperties();
-    }
-
-    @Bean
-    public Docket api() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .apiInfo(apiInfo())
-                .useDefaultResponseMessages(false)
-                .select()
-                .build();
-    }
-
-    @Bean
-    public ApiInfo apiInfo() {
-        return new ApiInfoBuilder()
-                .title("My API title")
-                .contact(new Contact(
-                        "loki2302",
-                        "http://loki2302.me",
-                        "loki2302@loki2302.me"))
-                .description("My API description")
-                .license("My API license")
-                .licenseUrl("http://retask.me/license")
-                .termsOfServiceUrl("http://retask.me/tos")
-                .version("My API version")
-                .build();
     }
 
     @Bean

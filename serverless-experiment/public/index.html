@@ -21,10 +21,9 @@
               template: `
               index page here. Link to <a href="/page1">page1</a>.
               <p>API URL: {{apiUrl}}</p>
+              <p>API KEY: {{apiKey}}</p>
               <p>Message: {{message|json}}</p>
-              <button type="button" ng-click="getData('/test')">GET /test</button>
-              <button type="button" ng-click="getData('/v2/api-docs')">GET /v2/api-docs</button>
-              `,
+              <button type="button" ng-click="getData('/test')">GET /test</button>`,
               controller: 'IndexController'
             })
             .when('/page1', {
@@ -34,12 +33,17 @@
               redirectTo: '/'
             });
         }])
-        .controller('IndexController', ['$scope', '$http', 'apiUrl', function($scope, $http, apiUrl) {
+        .controller('IndexController', ['$scope', '$http', 'apiUrl', 'apiKey', function($scope, $http, apiUrl, apiKey) {
           $scope.apiUrl = apiUrl;
+          $scope.apiKey = apiKey;
           $scope.message = '';
           $scope.getData = function(suffix) {
             $scope.message = 'Loading...';
-            $http.get(apiUrl + suffix).then(function(response) {
+            $http.get(apiUrl + suffix, {
+              headers: {
+                'x-api-key': apiKey
+              }
+            }).then(function(response) {
               $scope.message = response.data;
             }, function(response) {
               $scope.message = 'Error';
@@ -49,9 +53,12 @@
 
       angular.injector(['ng']).invoke(['$http', function($http) {
         $http.get('/config.json').then(function(response) {
-          var apiUrl = response.data['apiUrl'];
+          var data = response.data;
+          var apiUrl = data['apiUrl'];
+          var apiKey = data['apiKey'];
           angular.module('app')
-            .constant('apiUrl', apiUrl);
+            .constant('apiUrl', apiUrl)
+            .constant('apiKey', apiKey);
 
           angular.bootstrap(document, ['app']);
         }, function(response) {
