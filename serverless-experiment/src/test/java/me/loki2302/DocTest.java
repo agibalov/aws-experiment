@@ -18,6 +18,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 @SpringBootTest(properties = {
         "APP_MESSAGE_SUFFIX=aaa",
@@ -40,6 +41,7 @@ public class DocTest {
         public Docket api() {
             return new Docket(DocumentationType.SWAGGER_2)
                     .apiInfo(apiInfo())
+                    .protocols(Collections.singleton("https"))
                     .useDefaultResponseMessages(false)
                     .select()
                     .paths(s -> !s.startsWith("/error"))

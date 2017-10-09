@@ -44,7 +44,6 @@ elif [ "$command" == "deploy" ]; then
     WebsiteBucketName=${websiteBucketName}
 
   aws s3 sync public s3://${websiteBucketName}/ --delete --acl public-read
-  aws s3 cp build/api.json s3://${websiteBucketName}/docs/ --acl public-read
 
   # Create new API deployment manually - CloudFormation DOESN'T do it
   restApiId=$(get_stack_output ${stackName} "RestApiId")
@@ -64,6 +63,14 @@ elif [ "$command" == "deploy" ]; then
 
   jq -n --arg apiUrl ${restApiUrl} --arg apiKey ${restApiKey} '{"apiUrl":$apiUrl,"apiKey":$apiKey}' > config.json
   aws s3 cp config.json s3://${websiteBucketName}/ --acl public-read
+
+  swaggerHost=${restApiId}.execute-api.${region}.amazonaws.com
+  swaggerBasePath=/${restApiStageName}
+  jq \
+    --arg host "${swaggerHost}" \
+    --arg basePath "${swaggerBasePath}" \
+    '(.host = $host)|(.basePath = $basePath)' build/api.json > build/_api.json
+  aws s3 cp build/_api.json s3://${websiteBucketName}/docs/api.json --acl public-read
 
 elif [ "$command" == "undeploy" ]; then
   echo "UNDEPLOYING"
