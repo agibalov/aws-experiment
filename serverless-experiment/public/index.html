@@ -19,7 +19,8 @@
           $routeProvider
             .when('/', {
               template: `
-              index page here. Link to <a href="/page1">page1</a>.
+              Index page here. Link to <a href="/page1">page1</a>.
+              <p>API docs are <a href="/docs" target="_self">here</a>.</p>
               <p>API URL: {{apiUrl}}</p>
               <p>API KEY: {{apiKey}}</p>
               <p>Message: {{message|json}}</p>
