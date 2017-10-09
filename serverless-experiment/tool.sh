@@ -60,8 +60,12 @@ elif [ "$command" == "deploy" ]; then
   restApiKeyId=$(get_stack_output ${stackName} "RestApiKeyId")
   restApiKey=$(aws apigateway get-api-key --api-key ${restApiKeyId} \
     --output text --include-value --query 'value')
+  echo "API key: ${restApiKey}"
 
-  jq -n --arg apiUrl ${restApiUrl} --arg apiKey ${restApiKey} '{"apiUrl":$apiUrl,"apiKey":$apiKey}' > config.json
+  jq -n \
+    --arg apiUrl ${restApiUrl} \
+    --arg apiKey ${restApiKey} \
+    '{"apiUrl":$apiUrl,"apiKey":$apiKey}' > config.json
   aws s3 cp config.json s3://${websiteBucketName}/ --acl public-read
 
   swaggerHost=${restApiId}.execute-api.${region}.amazonaws.com

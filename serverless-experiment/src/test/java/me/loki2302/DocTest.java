@@ -9,15 +9,16 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.service.ApiInfo;
-import springfox.documentation.service.Contact;
+import springfox.documentation.service.*;
 import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spi.service.contexts.SecurityContext;
 import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 
 @SpringBootTest(properties = {
@@ -40,27 +41,31 @@ public class DocTest {
         @Bean
         public Docket api() {
             return new Docket(DocumentationType.SWAGGER_2)
-                    .apiInfo(apiInfo())
+                    .apiInfo(new ApiInfoBuilder()
+                            .title("My API title")
+                            .contact(new Contact(
+                                    "loki2302",
+                                    "http://loki2302.me",
+                                    "loki2302@loki2302.me"))
+                            .description("My API description")
+                            .license("My API license")
+                            .licenseUrl("http://retask.me/license")
+                            .termsOfServiceUrl("http://retask.me/tos")
+                            .version("My API version")
+                            .build())
+                    .securitySchemes(Arrays.asList(new ApiKey(
+                            "api-key-header",
+                            "x-api-key",
+                            "header")))
+                    .securityContexts(Arrays.asList(SecurityContext.builder()
+                            .securityReferences(Arrays.asList(new SecurityReference(
+                                    "api-key-header",
+                                    new AuthorizationScope[]{})))
+                            .build()))
                     .protocols(Collections.singleton("https"))
                     .useDefaultResponseMessages(false)
                     .select()
                     .paths(s -> !s.startsWith("/error"))
-                    .build();
-        }
-
-        @Bean
-        public ApiInfo apiInfo() {
-            return new ApiInfoBuilder()
-                    .title("My API title")
-                    .contact(new Contact(
-                            "loki2302",
-                            "http://loki2302.me",
-                            "loki2302@loki2302.me"))
-                    .description("My API description")
-                    .license("My API license")
-                    .licenseUrl("http://retask.me/license")
-                    .termsOfServiceUrl("http://retask.me/tos")
-                    .version("My API version")
                     .build();
         }
     }
