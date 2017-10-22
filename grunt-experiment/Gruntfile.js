@@ -1,53 +1,44 @@
 const { spawnSync } = require('child_process');
 
+const gap = require('grunt-as-promised');
+
 module.exports = (grunt) => {
+    gap.configure(grunt);
+
     const region = 'us-east-1';
     const stackName = 'dummy1';
     const bucketName = 'wer23r23r23r2r2';
 
-    grunt.registerTask('outputs', 'Show CF stack outputs', function() {
-        const done = this.async();
-
+    grunt.registerPromiseTask('outputs', async () => {
         const websiteUrl = getStackOutput('WebsiteURL');
         console.log(`websiteUrl: ${websiteUrl}`);
 
-        // TODO: can I have async/await tasks?
         const CF = require('aws-sdk/clients/cloudformation');
         const cf = new CF({
             region
         });
-        cf.describeStacks({
+        const data = await cf.describeStacks({
             StackName: stackName
-        }, function(err, data) {
-            if(err) {
-                done(err);
-                return;
-            }
+        }).promise();
 
-            const outputs = data.Stacks[0].Outputs;
-            const outputMap = {};
-            for(var output of outputs) {
-                outputMap[output.OutputKey] = output.OutputValue;
-            }
+        const outputs = data.Stacks[0].Outputs;
+        const outputMap = {};
+        for(var output of outputs) {
+            outputMap[output.OutputKey] = output.OutputValue;
+        }
 
-            console.log(outputMap);
-
-            done();
-        });
+        console.log(outputMap);
     });
 
-    grunt.registerTask('test', 'Test if website is available', function() {
-        const done = this.async();
-
+    grunt.registerPromiseTask('test', async () => {
         const axios = require('axios');
         const websiteUrl = getStackOutput('WebsiteURL');
-        axios.get(websiteUrl).then(function(result) {
+        try {
+            const result = await axios.get(websiteUrl);
             console.log('result:', result.data.substring(0, 100) + "...");
-            done();
-        }, function(error) {
+        } catch(error) {
             console.log('error:', error);
-            done(error);
-        });
+        }
     });
 
     grunt.registerTask('deploy', 'Create or update CF stack', function() {
