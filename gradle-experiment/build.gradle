@@ -1,0 +1,46 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.zeroturnaround:zt-exec:1.10'
+    }
+}
+
+import org.slf4j.LoggerFactory
+import org.zeroturnaround.exec.ProcessExecutor
+import org.zeroturnaround.exec.stream.slf4j.Slf4jStream
+
+def region = 'us-east-1'
+def stackName = 'dummy1'
+def bucketName = 'weiroiweur23'
+
+def shell(String command) {
+    return new ProcessExecutor()
+            .command("bash", "-c", command)
+            .readOutput(true)
+            .redirectOutputAlsoTo(Slf4jStream.of(LoggerFactory.getLogger('shell')).asWarn())
+            .execute()
+}
+
+task deploy {
+    doLast {
+        shell("""aws cloudformation deploy \
+            --template-file cf.yml \
+            --stack-name ${stackName} \
+            --capabilities CAPABILITY_IAM \
+            --region ${region} \
+            --parameter-overrides \
+            MyBucketName=${bucketName}""")
+
+        shell("""aws s3 cp public s3://${bucketName} --recursive --acl public-read""")
+    }
+}
+
+task undeploy {
+    doLast {
+        shell("""aws s3 rm s3://${bucketName} --recursive""")
+        shell("""aws cloudformation delete-stack --stack-name ${stackName} --region ${region}""")
+        shell("""aws cloudformation wait stack-delete-complete --stack-name ${stackName} --region ${region}""")
+    }
+}
