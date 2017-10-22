@@ -1,0 +1,32 @@
+<!doctype html>
+<html ng-app="app">
+    <head>
+        <title>Hello World</title>
+        <base href="/">
+    </head>
+    <body>
+        <h1>Hello World</h1>
+        <div ng-view></div>
+
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular-route.min.js"></script>
+        <script>
+            angular.module('app', ['ngRoute'])
+                .config(['$locationProvider', function($locationProvider) {
+                    $locationProvider.html5Mode(true);
+                }])
+                .config(['$routeProvider', function($routeProvider) {
+                    $routeProvider
+                        .when('/', {
+                            template: `index page here. Link to <a href="/page1">page1</a>.`
+                        })
+                        .when('/page1', {
+                            template: `page 1 here. Link to <a href="/">index page</a>.`
+                        })
+                        .otherwise({
+                            redirectTo: '/'
+                        });
+                }]);
+        </script>
+    </body>
+</html>
