@@ -1,0 +1,41 @@
+service: my-dummy-service
+
+provider:
+  name: aws
+
+plugins:
+  - serverless-s3-sync
+  - serverless-cf-vars
+
+custom:
+  websiteBucketName: ywiery37ryi2yr3
+  s3Sync:
+    - bucketName: ${self:custom.websiteBucketName}
+      localDir: public
+
+resources:
+  Outputs:
+    WebsiteURL:
+      Value: { "Fn::GetAtt": ["DummyWebsiteBucket", "WebsiteURL"] }
+
+  Resources:
+    DummyWebsiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:custom.websiteBucketName}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html
+      DeletionPolicy: Delete
+
+    DummyBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: { "Ref": "DummyWebsiteBucket" }
+        PolicyDocument:
+          Statement:
+            - Action: s3:GetObject
+              Effect: Allow
+              Resource: "#{DummyWebsiteBucket.Arn}/*"
+              Principal: "*"
