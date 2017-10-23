@@ -1,0 +1,37 @@
+plugins {
+    id 'org.springframework.boot' version '1.5.7.RELEASE'
+}
+
+group 'me.loki2302'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'groovy'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://repo.spring.io/libs-milestone'
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.12'
+    compile 'org.springframework.shell:spring-shell-starter:2.0.0.M2'
+    compile 'org.springframework:spring-web:4.3.11.RELEASE'
+    compile 'org.zeroturnaround:zt-exec:1.10'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.218'
+}
+
+bootRepackage {
+    executable = true
+}
+
+task tool(type: Copy) {
+    dependsOn bootRepackage
+    from fileTree(dir: "$buildDir/libs", include: '*.jar')
+    into rootDir
+    rename '.+', 'tool'
+}
