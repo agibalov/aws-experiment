@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.*;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -14,9 +15,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class DynamoDbMapperTest {
+    @ClassRule
+    public static AmazonDynamoDBProvider amazonDynamoDBProvider = new AmazonDynamoDBProvider();
+
     @Test
     public void dynamoDbMapperShouldWork() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride("dummy1"))
                 .build();
@@ -43,7 +47,7 @@ public class DynamoDbMapperTest {
 
     @Test
     public void dynamoDbTableMapperShouldWork() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride("dummy2"))
                 .build();

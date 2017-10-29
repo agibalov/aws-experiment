@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.datamodeling.*;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -16,9 +17,12 @@ import static org.junit.Assert.assertEquals;
 public class DynamoDbMapperCustomTypeTest {
     private final static String TEST_TABLE_NAME = "dummy2";
 
+    @ClassRule
+    public static AmazonDynamoDBProvider amazonDynamoDBProvider = new AmazonDynamoDBProvider();
+
     @Test
     public void canUseCustomTypeConverter() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride(TEST_TABLE_NAME))
                 .build();
@@ -45,7 +49,7 @@ public class DynamoDbMapperCustomTypeTest {
 
     @Test
     public void canUseStandardJsonConverter() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride(TEST_TABLE_NAME))
                 .build();
@@ -77,7 +81,7 @@ public class DynamoDbMapperCustomTypeTest {
 
     @Test
     public void canUseStandardEnumConverter() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride(TEST_TABLE_NAME))
                 .build();

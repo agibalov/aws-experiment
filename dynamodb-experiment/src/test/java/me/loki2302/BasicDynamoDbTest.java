@@ -1,9 +1,8 @@
 package me.loki2302;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.*;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -12,9 +11,12 @@ import java.util.Map;
 public class BasicDynamoDbTest {
     private final static String TEST_TABLE_NAME = "test1";
 
+    @ClassRule
+    public static AmazonDynamoDBProvider amazonDynamoDBProvider = new AmazonDynamoDBProvider();
+
     @Test
     public void dynamoDbShouldWork() throws InterruptedException, IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
 
         try(DynamoDbTableResource ignore = new DynamoDbTableResource(amazonDynamoDB, new CreateTableRequest()
                 .withTableName(TEST_TABLE_NAME)

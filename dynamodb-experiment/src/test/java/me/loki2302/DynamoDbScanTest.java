@@ -3,6 +3,7 @@ package me.loki2302;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.*;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -17,9 +18,12 @@ import static org.junit.Assert.assertEquals;
 public class DynamoDbScanTest {
     private final static String TEST_TABLE_NAME = "test1";
 
+    @ClassRule
+    public static AmazonDynamoDBProvider amazonDynamoDBProvider = new AmazonDynamoDBProvider();
+
     @Test
     public void dummy() throws InterruptedException, IOException {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
 
         try(DynamoDbTableResource ignore = new DynamoDbTableResource(amazonDynamoDB, new CreateTableRequest()
                 .withTableName(TEST_TABLE_NAME)

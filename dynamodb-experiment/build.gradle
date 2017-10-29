@@ -12,5 +12,11 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.201'
+    testCompile group: 'org.testcontainers', name: 'testcontainers', version: '1.4.3'
+    testCompile group: 'org.testcontainers', name: 'dynalite', version: '1.4.3'
     testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.16.18'
+}
+
+task dynalite(type: Test) {
+    systemProperty 'DYNALITE', '1'
 }
