@@ -1,7 +1,6 @@
 package me.loki2302;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.*;
 import org.junit.ClassRule;
 import org.junit.Test;

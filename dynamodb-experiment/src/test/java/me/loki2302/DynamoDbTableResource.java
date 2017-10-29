@@ -28,7 +28,7 @@ public class DynamoDbTableResource implements Closeable {
 
         amazonDynamoDB.createTable(createTableRequest);
         amazonDynamoDB.waiters().tableExists().run(
-                new WaiterParameters()
+                new WaiterParameters<DescribeTableRequest>()
                         .withRequest(new DescribeTableRequest()
                                 .withTableName(createTableRequest.getTableName()))
                         .withPollingStrategy(POLLING_STRATEGY));
@@ -40,7 +40,7 @@ public class DynamoDbTableResource implements Closeable {
                 .withTableName(createTableRequest.getTableName());
         amazonDynamoDB.deleteTable(deleteTableRequest);
         amazonDynamoDB.waiters().tableNotExists().run(
-                new WaiterParameters()
+                new WaiterParameters<DescribeTableRequest>()
                     .withRequest(new DescribeTableRequest()
                             .withTableName(createTableRequest.getTableName()))
                     .withPollingStrategy(POLLING_STRATEGY));
