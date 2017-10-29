@@ -12,7 +12,7 @@ public class AmazonDynamoDBProvider implements TestRule {
     private AmazonDynamoDB amazonDynamoDB;
 
     public AmazonDynamoDBProvider() {
-        dynaliteContainer = System.getProperty("DYNALITE") != null ? new DynaliteContainer() : null;
+        dynaliteContainer = System.getProperty("AWS") != null ? null : new DynaliteContainer();
     }
 
     public AmazonDynamoDB getAmazonDynamoDB() {

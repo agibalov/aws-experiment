@@ -17,6 +17,6 @@ dependencies {
     testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.16.18'
 }
 
-task dynalite(type: Test) {
-    systemProperty 'DYNALITE', '1'
+task aws(type: Test) {
+    systemProperty 'AWS', '1'
 }

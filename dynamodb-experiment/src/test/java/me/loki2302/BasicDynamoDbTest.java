@@ -17,7 +17,6 @@ public class BasicDynamoDbTest {
     @Test
     public void dynamoDbShouldWork() throws InterruptedException, IOException {
         AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
-
         try(DynamoDbTableResource ignore = new DynamoDbTableResource(amazonDynamoDB, new CreateTableRequest()
                 .withTableName(TEST_TABLE_NAME)
                 .withAttributeDefinitions(new AttributeDefinition()
