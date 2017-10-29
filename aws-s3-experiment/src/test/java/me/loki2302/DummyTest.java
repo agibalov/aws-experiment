@@ -1,13 +1,14 @@
 package me.loki2302;
 
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.util.IOUtils;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,10 +17,26 @@ import static org.junit.Assert.*;
 public class DummyTest {
     private final static String TEST_BUCKET_NAME = "weufhiewurhi23uhr23r23";
 
+    private AmazonS3 amazonS3;
+
+    @Before
+    public void createAmazonS3Client() {
+        if(System.getProperty("LOCALSTACK") != null) {
+            amazonS3 = AmazonS3ClientBuilder
+                    .standard()
+                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
+                            "http://localhost:4572",
+                            "us-east-1"
+                    ))
+                    .withPathStyleAccessEnabled(true)
+                    .build();
+        } else {
+            amazonS3 = AmazonS3ClientBuilder.defaultClient();
+        }
+    }
+
     @Test
     public void basicScenario() throws IOException {
-        AmazonS3 amazonS3 = AmazonS3ClientBuilder.defaultClient();
-
         amazonS3.createBucket(TEST_BUCKET_NAME);
 
         PutObjectResult putObjectResult = amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
@@ -51,8 +68,6 @@ public class DummyTest {
 
     @Test
     public void versioningScenario() throws IOException {
-        AmazonS3 amazonS3 = AmazonS3ClientBuilder.defaultClient();
-
         amazonS3.createBucket(TEST_BUCKET_NAME);
         amazonS3.setBucketVersioningConfiguration(new SetBucketVersioningConfigurationRequest(
                 TEST_BUCKET_NAME,
@@ -93,8 +108,6 @@ public class DummyTest {
 
     @Test
     public void eTagConstraintScenario() {
-        AmazonS3 amazonS3 = AmazonS3ClientBuilder.defaultClient();
-
         amazonS3.createBucket(TEST_BUCKET_NAME);
 
         amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");

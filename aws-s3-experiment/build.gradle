@@ -13,3 +13,7 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.220'
 }
+
+task localstack(type: Test) {
+    systemProperty 'LOCALSTACK', '1'
+}
