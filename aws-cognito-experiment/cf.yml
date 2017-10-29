@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  WebsiteBucketName:
+    Type: String
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+  CognitoProviderName:
+    Value: !GetAtt CognitoUserPool.ProviderName
+  CognitoProviderURL:
+    Value: !GetAtt CognitoUserPool.ProviderURL
+  CognitoUserPoolId:
+    Value: !Ref CognitoUserPool
+  CognitoUserPoolClientId:
+    Value: !Ref CognitoUserPoolClient
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref WebsiteBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+    DeletionPolicy: Delete
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: MyCognitoUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+          RequireUppercase: false
+      Schema:
+        - Name: email
+          Required: true
+      AutoVerifiedAttributes:
+        - email
+      #AliasAttributes:
+      #  - email
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: MyCognitoUserPoolClient
+      UserPoolId: !Ref CognitoUserPool
+

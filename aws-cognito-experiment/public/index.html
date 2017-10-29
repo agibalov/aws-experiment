@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Hello Cognito</title>
+        <base href="/">
+    </head>
+    <body>
+        <h1>Hello Cognito</h1>
+        <div ng-view></div>
+
+        <script src="https://rawgit.com/aws/amazon-cognito-identity-js/master/dist/aws-cognito-sdk.min.js"></script>
+        <script src="https://rawgit.com/aws/amazon-cognito-identity-js/master/dist/amazon-cognito-identity.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular-route.min.js"></script>
+        <script>
+            angular.module('app', ['ngRoute'])
+                .config(['$locationProvider', function($locationProvider) {
+                    $locationProvider.html5Mode(true);
+                }])
+                .config(['$routeProvider', function($routeProvider) {
+                    $routeProvider
+                        .when('/', {
+                            template: `
+                            <button type="button" ng-click="doSignUp()">Sign Up</button>
+                            <button type="button" ng-click="doConfirm()">Confirm</button>
+                            <button type="button" ng-click="doSignIn()">Sign In</button>
+                            `,
+                            controller: ['$scope', 'config', function($scope, config) {
+                                var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
+                                var CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
+                                var AuthenticationDetails = AmazonCognitoIdentity.AuthenticationDetails;
+                                var CognitoUser = AmazonCognitoIdentity.CognitoUser;
+
+                                var username = 'loki2302';
+                                var email = 'loki2302@loki2302.me';
+                                var password = '!Qwerty123456';
+
+                                var userPool = new CognitoUserPool({
+                                    UserPoolId: config.cognitoUserPoolId,
+                                    ClientId: config.cognitoUserPoolClientId
+                                });
+
+                                $scope.doSignUp = function() {
+                                    var attributeList = [
+                                        new CognitoUserAttribute({
+                                            Name: 'email',
+                                            Value: email
+                                        })
+                                    ];
+                                    userPool.signUp(username, password, attributeList, null, function(err, result) {
+                                        if(err) {
+                                            console.log('Error', err);
+                                            return;
+                                        }
+
+                                        var cognitoUser = result.user;
+                                        console.log('User', cognitoUser);
+                                    });
+                                };
+
+                                $scope.doConfirm = function() {
+                                    var cognitoUser = new CognitoUser({
+                                        Username: username,
+                                        Pool: userPool
+                                    });
+                                    var confirmationCode = '245664';
+                                    cognitoUser.confirmRegistration(confirmationCode, true, function(err, result) {
+                                        if(err) {
+                                            console.log('Error', err);
+                                            return;
+                                        }
+
+                                        console.log('Result', result);
+                                    });
+                                };
+
+                                $scope.doSignIn = function() {
+                                    var cognitoUser = new CognitoUser({
+                                        Username: username,
+                                        Pool: userPool
+                                    });
+                                    cognitoUser.authenticateUser(new AuthenticationDetails({
+                                        Username: username,
+                                        Password: password
+                                    }), {
+                                        onSuccess: function(result) {
+                                            console.log('Success', result);
+                                        },
+                                        onFailure: function(err) {
+                                            console.log('Error', err);
+                                        }
+                                    });
+                                };
+                            }]
+                        })
+                        .otherwise({
+                            redirectTo: '/'
+                        });
+                }]);
+
+            angular.injector(['ng']).invoke(['$http', function($http) {
+                $http.get('/config.json').then(function(response) {
+                    var config = response.data;
+                    angular.module('app')
+                        .constant('config', config);
+
+                    angular.bootstrap(document, ['app']);
+                }, function(response) {
+                    console.log('Failed to load /config.json');
+                });
+            }]);
+        </script>
+    </body>
+</html>
