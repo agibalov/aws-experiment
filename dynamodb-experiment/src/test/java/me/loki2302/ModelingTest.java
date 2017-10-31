@@ -44,6 +44,7 @@ public class ModelingTest {
                     Order order = new Order();
                     order.setUserId(userId);
                     order.setOrderTime(String.format("%d", timestampIndex));
+                    order.setOrderTotal(userIndex * 10 + timestampIndex);
                     order.setDescription(String.format("user %d timestamp %d", userIndex, timestampIndex));
                     orderService.createOrder(order);
                 }
@@ -89,6 +90,12 @@ public class ModelingTest {
                 Order order = orderService.findLastOrderByUserId("user3");
                 assertEquals("2", order.getOrderTime());
             }
+
+            // find top order by user ID
+            {
+                Order order = orderService.findTopOrderByUserId("user3");
+                assertEquals(32, order.getOrderTotal());
+            }
         }
     }
 
@@ -101,6 +108,9 @@ public class ModelingTest {
 
         @DynamoDBRangeKey
         private String orderTime;
+
+        @DynamoDBIndexRangeKey(localSecondaryIndexName = "OrderTotalLocalIndex")
+        private int orderTotal;
 
         @DynamoDBAttribute
         private String description;
@@ -155,6 +165,18 @@ public class ModelingTest {
                     .withExpressionAttributeValues(new HashMap<String, AttributeValue>() {{
                         put(":userId", new AttributeValue().withS(userId));
                     }})
+                    .withScanIndexForward(false)
+                    .withLimit(1));
+            return orders.get(0);
+        }
+
+        public Order findTopOrderByUserId(String userId) {
+            List<Order> orders = orderTableMapper.query(new DynamoDBQueryExpression<Order>()
+                    .withKeyConditionExpression("userId = :userId")
+                    .withExpressionAttributeValues(new HashMap<String, AttributeValue>() {{
+                        put(":userId", new AttributeValue().withS(userId));
+                    }})
+                    .withIndexName("OrderTotalLocalIndex")
                     .withScanIndexForward(false)
                     .withLimit(1));
             return orders.get(0);
