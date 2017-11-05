@@ -1,0 +1,24 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp />
+                <pattern>
+                    <pattern>
+                        {
+                            "app": "%mdc{appName}",
+                            "logger": "%logger",
+                            "level": "%level",
+                            "message": "%message",
+                            "exception": "%throwable"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="debug">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

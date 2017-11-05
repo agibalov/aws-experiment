@@ -5,6 +5,7 @@ Outputs:
     Value: !Sub "https://${MyElasticsearchDomain.DomainEndpoint}/_plugin/kibana"
 
 Resources:
+  # App1
   DummyLambdaFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -36,10 +37,11 @@ Resources:
       Code: build/distributions/aws-elk-experiment-1.0-SNAPSHOT.zip
       Runtime: java8
       Timeout: 60
-      MemorySize: 512
+      MemorySize: 256
       Environment:
         Variables:
-          LOGGING_PATTERN_CONSOLE: "LOG %logger %level %message %replace(%throwable){'[\n]+', ''}%n"
+          LOGGING_CONFIG: "classpath:logback-json.xml"
+          APP_NAME: "dummyApp1"
 
   DummyLambdaRule:
     Type: AWS::Events::Rule
@@ -63,6 +65,16 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${DummyLambdaFunction}"
       RetentionInDays: 1
 
+  DummyLambdaFunctionLogGroupToElasticsearchSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+    - PermissionForCloudWatchLogsToInvokeLogsToElasticsearchLambdaFunction
+    Properties:
+      DestinationArn: !GetAtt LogsToElasticsearchLambdaFunction.Arn
+      FilterPattern: ""
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
+
+  # Elasticsearch-specific stuff
   MyElasticsearchDomain:
     Type: AWS::Elasticsearch::Domain
     Properties:
@@ -142,12 +154,3 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: !Sub "logs.${AWS::Region}.amazonaws.com"
       SourceAccount: !Ref AWS::AccountId
-
-  DummyLambdaFunctionLogGroupToElasticsearchSubscriptionFilter:
-    Type: AWS::Logs::SubscriptionFilter
-    DependsOn:
-    - PermissionForCloudWatchLogsToInvokeLogsToElasticsearchLambdaFunction
-    Properties:
-      DestinationArn: !GetAtt LogsToElasticsearchLambdaFunction.Arn
-      FilterPattern: "[type = LOG, logger, level, message]"
-      LogGroupName: !Ref DummyLambdaFunctionLogGroup
