@@ -39,7 +39,7 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          HELLO: there
+          LOGGING_PATTERN_CONSOLE: "LOG %logger %level %message %replace(%throwable){'[\n]+', ''}%n"
 
   DummyLambdaRule:
     Type: AWS::Events::Rule
@@ -141,7 +141,6 @@ Resources:
       FunctionName: !Ref LogsToElasticsearchLambdaFunction
       Action: lambda:InvokeFunction
       Principal: !Sub "logs.${AWS::Region}.amazonaws.com"
-      SourceArn: !GetAtt DummyLambdaFunctionLogGroup.Arn # !!! how do I make it work without this?
       SourceAccount: !Ref AWS::AccountId
 
   DummyLambdaFunctionLogGroupToElasticsearchSubscriptionFilter:
@@ -150,5 +149,5 @@ Resources:
     - PermissionForCloudWatchLogsToInvokeLogsToElasticsearchLambdaFunction
     Properties:
       DestinationArn: !GetAtt LogsToElasticsearchLambdaFunction.Arn
-      FilterPattern: "" # which log records to include
+      FilterPattern: "[type = LOG, logger, level, message]"
       LogGroupName: !Ref DummyLambdaFunctionLogGroup
