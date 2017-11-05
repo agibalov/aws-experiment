@@ -83,7 +83,8 @@ Resources:
         Statement:
           Effect: Allow
           Principal:
-            AWS: "*"
+            # AWS: "*" # allow unrestricted public access
+            AWS: !Ref AWS::AccountId # allow requests from one AWS account
           Action:
           - es:*
           Resource: "*"
