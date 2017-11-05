@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  KibanaURL:
+    Value: !Sub "https://${MyElasticsearchDomain.DomainEndpoint}/_plugin/kibana"
+
+Resources:
+  DummyLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: WriteLogs
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: "*"
+
+  DummyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: me.loki2302.AwsHandler::handle
+      Role: !GetAtt DummyLambdaFunctionRole.Arn
+      Code: build/distributions/aws-elk-experiment-1.0-SNAPSHOT.zip
+      Runtime: java8
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          HELLO: there
+
+  DummyLambdaRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(1 minute)
+      Targets:
+      - Id: !Sub "${DummyLambdaFunction}-Target"
+        Arn: !GetAtt DummyLambdaFunction.Arn
+
+  PermissionForEventsToInvokeDummyLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DummyLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DummyLambdaRule.Arn
+
+  DummyLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${DummyLambdaFunction}"
+      RetentionInDays: 1
+
+  MyElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action:
+          - es:*
+          Resource: "*"
+      ElasticsearchVersion: "5.5"
+      ElasticsearchClusterConfig:
+        InstanceCount: 1
+        InstanceType: t2.small.elasticsearch
+      EBSOptions:
+        EBSEnabled: true
+        Iops: 0
+        VolumeSize: 10
+        VolumeType: gp2
+
+  LogsToElasticsearchLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: WriteToElasticsearch
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - es:*
+            Resource: "*"
+      - PolicyName: WriteLogs
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: "*"
+
+  LogsToElasticsearchLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LogsToElasticsearchLambdaFunction}"
+      RetentionInDays: 1
+
+  LogsToElasticsearchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: logstoelasticsearch.handler
+      Role: !GetAtt LogsToElasticsearchLambdaFunctionRole.Arn
+      Code: logstoelasticsearch.zip
+      Runtime: nodejs4.3
+      Timeout: 60
+      MemorySize: 128
+      Environment:
+        Variables:
+          ELASTICSEARCH_ENDPOINT: !GetAtt MyElasticsearchDomain.DomainEndpoint
+
+  PermissionForCloudWatchLogsToInvokeLogsToElasticsearchLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LogsToElasticsearchLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: !Sub "logs.${AWS::Region}.amazonaws.com"
+      SourceArn: !GetAtt DummyLambdaFunctionLogGroup.Arn # !!! how do I make it work without this?
+      SourceAccount: !Ref AWS::AccountId
+
+  DummyLambdaFunctionLogGroupToElasticsearchSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+    - PermissionForCloudWatchLogsToInvokeLogsToElasticsearchLambdaFunction
+    Properties:
+      DestinationArn: !GetAtt LogsToElasticsearchLambdaFunction.Arn
+      FilterPattern: "" # which log records to include
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
