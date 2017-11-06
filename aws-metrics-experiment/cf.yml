@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+  DummyLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: WriteLogs
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogStreams
+            Resource: "*"
+
+  DummyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: me.loki2302.AwsHandler::handle
+      Role: !GetAtt DummyLambdaFunctionRole.Arn
+      Code: build/distributions/aws-metrics-experiment-1.0-SNAPSHOT.zip
+      Runtime: java8
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOGGING_CONFIG: "classpath:logback-json.xml"
+
+  DummyLambdaRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(1 minute)
+      Targets:
+      - Id: !Sub "${DummyLambdaFunction}-Target"
+        Arn: !GetAtt DummyLambdaFunction.Arn
+
+  PermissionForEventsToInvokeDummyLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DummyLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DummyLambdaRule.Arn
+
+  DummyLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${DummyLambdaFunction}"
+      RetentionInDays: 1
+
+  MyDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: MyDashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  [ "MyMetricNamespace", "Everything", { "stat": "Sum", "period": 60 } ],
+                  [ "MyMetricNamespace", "Errors", { "stat": "Sum", "period": 60 } ],
+                  [ "MyMetricNamespace", "SomeStaticValue", { "stat": "Sum", "period": 60 } ],
+                  [ "MyMetricNamespace", "SomeRandomValue", { "stat": "Sum", "period": 60 } ]
+                ],
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "text",
+              "x": 0,
+              "y": 6,
+              "width": 6,
+              "height": 1,
+              "properties": {
+                "markdown": "**Hello** `World` *!!!*"
+              }
+            }
+          ]
+        }
+
+  EverythingMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: ""
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
+      MetricTransformations:
+      - MetricName: Everything
+        MetricNamespace: MyMetricNamespace
+        MetricValue: 1
+
+  ErrorsMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: |-
+        { $.level = "ERROR" }
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
+      MetricTransformations:
+      - MetricName: Errors
+        MetricNamespace: MyMetricNamespace
+        MetricValue: 1
+
+  SomeStaticValueMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: |-
+        { $.message = "SomeStaticValue" }
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
+      MetricTransformations:
+      - MetricName: SomeStaticValue
+        MetricNamespace: MyMetricNamespace
+        MetricValue: $.value
+
+  SomeRandomValueMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: |-
+        { $.message = "SomeRandomValue" }
+      LogGroupName: !Ref DummyLambdaFunctionLogGroup
+      MetricTransformations:
+      - MetricName: SomeRandomValue
+        MetricNamespace: MyMetricNamespace
+        MetricValue: $.value
