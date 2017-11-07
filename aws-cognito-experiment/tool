@@ -7,7 +7,7 @@ const stackName = 'CognitoExperiment';
 const websiteBucketName = 'loki2302-cognito-website';
 
 const yargs = require('yargs');
-yargs
+const argv = yargs
     .showHelpOnFail(true)
     .demandCommand(1, '')
     .command('deploy', 'Deploy everything', () => {}, () => {
@@ -20,6 +20,12 @@ yargs
             --region ${region} \
             --parameter-overrides \
             WebsiteBucketName=${websiteBucketName}`);
+
+        const restApiId = getStackOutput('RestApiId');
+        const restApiStageName = getStackOutput('RestApiStageName');
+        shell(`aws apigateway create-deployment \
+            --rest-api-id ${restApiId} \
+            --stage-name ${restApiStageName}`);
 
         deployWebsite();
     })
@@ -74,9 +80,11 @@ function deployWebsite() {
 
     const cognitoUserPoolId = getStackOutput('CognitoUserPoolId');
     const cognitoUserPoolClientId = getStackOutput('CognitoUserPoolClientId');
+    const restApiUrl = getStackOutput('RestApiUrl');
     const configJson = JSON.stringify({
         cognitoUserPoolId,
-        cognitoUserPoolClientId
+        cognitoUserPoolClientId,
+        restApiUrl
     });
     const { writeFileSync } = require('fs');
     writeFileSync('config.json', configJson);

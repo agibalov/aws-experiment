@@ -1,12 +1,35 @@
 <!doctype html>
-<html>
+<html lang="en">
     <head>
         <title>Hello Cognito</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <base href="/">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
     </head>
-    <body>
-        <h1>Hello Cognito</h1>
-        <div ng-view></div>
+    <body ng-controller="AppController">
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+                <a class="navbar-brand" href="/">Hello Cognito</a>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item" ng-class="{active: isNavBarActive('/signup')}">
+                            <a class="nav-link" href="/signup">Sign Up</a>
+                        </li>
+                        <li class="nav-item" ng-class="{active: isNavBarActive('/confirm')}">
+                            <a class="nav-link" href="/confirm">Confirm</a>
+                        </li>
+                        <li class="nav-item" ng-class="{active: isNavBarActive('/signin')}">
+                            <a class="nav-link" href="/signin">Sign In</a>
+                        </li>
+                        <li class="nav-item" ng-class="{active: isNavBarActive('/test')}">
+                            <a class="nav-link" href="/test">Test</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            <div style="margin-top: 20px;" ng-view></div>
+        </div>
 
         <script src="https://rawgit.com/aws/amazon-cognito-identity-js/master/dist/aws-cognito-sdk.min.js"></script>
         <script src="https://rawgit.com/aws/amazon-cognito-identity-js/master/dist/amazon-cognito-identity.min.js"></script>
@@ -19,83 +42,263 @@
                 }])
                 .config(['$routeProvider', function($routeProvider) {
                     $routeProvider
-                        .when('/', {
+                        .when('/signup', {
                             template: `
-                            <button type="button" ng-click="doSignUp()">Sign Up</button>
-                            <button type="button" ng-click="doConfirm()">Confirm</button>
-                            <button type="button" ng-click="doSignIn()">Sign In</button>
-                            `,
-                            controller: ['$scope', 'config', function($scope, config) {
-                                var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
-                                var CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
-                                var AuthenticationDetails = AmazonCognitoIdentity.AuthenticationDetails;
-                                var CognitoUser = AmazonCognitoIdentity.CognitoUser;
+<h3>Sign Up</h3>
+<form ng-submit="onSubmit()" autocomplete="off">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" class="form-control" id="username"
+            ng-model="model.username" ng-disabled="wip">
+    </div>
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="text" class="form-control" id="email"
+            ng-model="model.email" ng-disabled="wip">
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" id="password"
+            ng-model="model.password" ng-disabled="wip">
+    </div>
+    <button type="submit" class="btn btn-primary" ng-disabled="wip">Sign Up</button>
+    <pre ng-if="message">{{message|json}}</pre>
+</form>`,
+                            controller: ['$scope', 'cognitoService', function($scope, cognitoService) {
+                                $scope.wip = false;
+                                $scope.model = {
+                                    username: "",
+                                    email: "",
+                                    password: ""
+                                };
+                                $scope.message = null;
 
-                                var username = 'loki2302';
-                                var email = 'loki2302@loki2302.me';
-                                var password = '!Qwerty123456';
-
-                                var userPool = new CognitoUserPool({
-                                    UserPoolId: config.cognitoUserPoolId,
-                                    ClientId: config.cognitoUserPoolClientId
-                                });
-
-                                $scope.doSignUp = function() {
-                                    var attributeList = [
-                                        new CognitoUserAttribute({
-                                            Name: 'email',
-                                            Value: email
-                                        })
-                                    ];
-                                    userPool.signUp(username, password, attributeList, null, function(err, result) {
-                                        if(err) {
-                                            console.log('Error', err);
-                                            return;
-                                        }
-
-                                        var cognitoUser = result.user;
-                                        console.log('User', cognitoUser);
+                                $scope.onSubmit = function() {
+                                    $scope.wip = true;
+                                    $scope.message = null;
+                                    cognitoService.signUp({
+                                        username: $scope.model.username,
+                                        email: $scope.model.email,
+                                        password: $scope.model.password
+                                    }).then(function(result) {
+                                        $scope.message = result;
+                                    }, function(error) {
+                                        $scope.message = error;
+                                    }).finally(function() {
+                                        $scope.wip = false;
                                     });
                                 };
+                            }]
+                        })
+                        .when('/confirm', {
+                            template: `
+<h3>Confirm</h3>
+<form ng-submit="onSubmit()" autocomplete="off">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" class="form-control" id="username"
+            ng-model="model.username" ng-disabled="wip">
+    </div>
+    <div class="form-group">
+        <label for="code">Code</label>
+        <input type="text" class="form-control" id="code"
+            ng-model="model.code" ng-disabled="wip">
+    </div>
+    <button type="submit" class="btn btn-primary" ng-disabled="wip">Confirm</button>
+    <pre ng-if="message">{{message|json}}</pre>
+</form>`,
+                            controller: ['$scope', 'cognitoService', function($scope, cognitoService) {
+                                $scope.wip = false;
+                                $scope.model = {
+                                    username: "",
+                                    code: ""
+                                };
+                                $scope.message = null;
 
-                                $scope.doConfirm = function() {
-                                    var cognitoUser = new CognitoUser({
-                                        Username: username,
-                                        Pool: userPool
-                                    });
-                                    var confirmationCode = '245664';
-                                    cognitoUser.confirmRegistration(confirmationCode, true, function(err, result) {
-                                        if(err) {
-                                            console.log('Error', err);
-                                            return;
-                                        }
-
-                                        console.log('Result', result);
+                                $scope.onSubmit = function() {
+                                    $scope.wip = true;
+                                    $scope.message = null;
+                                    cognitoService.confirm({
+                                        username: $scope.model.username,
+                                        code: $scope.model.code
+                                    }).then(function(result) {
+                                        $scope.message = result;
+                                    }, function(error) {
+                                        $scope.message = error;
+                                    }).finally(function() {
+                                        $scope.wip = false;
                                     });
                                 };
+                            }]
+                        })
+                        .when('/signin', {
+                            template: `
+<h3>Sign In</h3>
+<form ng-submit="onSubmit()" autocomplete="off">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" class="form-control" id="username"
+            ng-model="model.username" ng-disabled="wip">
+    </div>
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" class="form-control" id="password"
+            ng-model="model.password" ng-disabled="wip">
+    </div>
+    <button type="submit" class="btn btn-primary" ng-disabled="wip">Sign In</button>
+    <pre ng-if="message">{{message|json}}</pre>
+</form>`,
+                            controller: ['$scope', 'cognitoService', function($scope, cognitoService) {
+                                $scope.wip = false;
+                                $scope.model = {
+                                    username: "",
+                                    password: ""
+                                };
+                                $scope.message = null;
 
-                                $scope.doSignIn = function() {
-                                    var cognitoUser = new CognitoUser({
-                                        Username: username,
-                                        Pool: userPool
+                                $scope.onSubmit = function() {
+                                    $scope.wip = true;
+                                    $scope.message = null;
+                                    cognitoService.signIn({
+                                        username: $scope.model.username,
+                                        password: $scope.model.password
+                                    }).then(function(result) {
+                                        $scope.message = result;
+                                    }, function(error) {
+                                        $scope.message = error;
+                                    }).finally(function() {
+                                        $scope.wip = false;
                                     });
-                                    cognitoUser.authenticateUser(new AuthenticationDetails({
-                                        Username: username,
-                                        Password: password
-                                    }), {
-                                        onSuccess: function(result) {
-                                            console.log('Success', result);
-                                        },
-                                        onFailure: function(err) {
-                                            console.log('Error', err);
+                                };
+                            }]
+                        })
+                        .when('/test', {
+                            template: `
+<h3>Test</h3>
+<form ng-submit="onSubmit()" autocomplete="off">
+    <div class="form-group">
+        <label for="idtoken">ID token</label>
+        <input type="text" class="form-control" id="idtoken"
+            ng-model="model.idToken" ng-disabled="wip">
+    </div>
+    <button type="submit" class="btn btn-primary" ng-disabled="wip">Test /api/secret</button>
+    <pre ng-if="message">{{message|json}}</pre>
+</form>`,
+                            controller: ['$scope', '$http', 'config', function($scope, $http, config) {
+                                $scope.wip = false;
+                                $scope.model = {
+                                    idToken: ""
+                                };
+                                $scope.message = null;
+
+                                $scope.onSubmit = function() {
+                                    $scope.wip = true;
+                                    $scope.message = null;
+
+                                    $http.get(config.restApiUrl + '/api/secret', {
+                                        headers: {
+                                            "THETOKENHEADER": $scope.model.idToken
                                         }
+                                    }).then(function(result) {
+                                        console.log('/api/secret success: ', result.data);
+                                        $scope.message = result.data;
+                                    }, function(err) {
+                                        console.log('/api/secret error', err);
+                                        $scope.message = err;
+                                    }).finally(function() {
+                                        $scope.wip = false;
                                     });
                                 };
                             }]
                         })
                         .otherwise({
-                            redirectTo: '/'
+                            redirectTo: '/signup'
                         });
+                }])
+                .factory('cognitoService', ['config', '$q', function(config, $q) {
+                    var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
+                    var CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
+                    var AuthenticationDetails = AmazonCognitoIdentity.AuthenticationDetails;
+                    var CognitoUser = AmazonCognitoIdentity.CognitoUser;
+
+                    var userPool = new CognitoUserPool({
+                        UserPoolId: config.cognitoUserPoolId,
+                        ClientId: config.cognitoUserPoolClientId
+                    });
+
+                    function signUp(credentials) {
+                        return $q(function(resolve, reject) {
+                            var attributeList = [
+                                new CognitoUserAttribute({
+                                    Name: 'email',
+                                    Value: credentials.email
+                                })
+                            ];
+
+                            userPool.signUp(credentials.username, credentials.password, attributeList, null, function(err, result) {
+                                if(err) {
+                                    console.log('Error', err);
+                                    reject(err);
+                                    return;
+                                }
+
+                                console.log('User', result);
+                                resolve(result);
+                            });
+                        });
+                    };
+
+                    function confirm(confirmationDetails) {
+                        return $q(function(resolve, reject) {
+                            var cognitoUser = new CognitoUser({
+                                Username: confirmationDetails.username,
+                                Pool: userPool
+                            });
+                            cognitoUser.confirmRegistration(confirmationDetails.code, true, function(err, result) {
+                                if(err) {
+                                    console.log('Error', err);
+                                    reject(err);
+                                    return;
+                                }
+
+                                console.log('Result', result);
+                                resolve(result);
+                            });
+                        });
+                    };
+
+                    function signIn(credentials) {
+                        return $q(function(resolve, reject) {
+                            var cognitoUser = new CognitoUser({
+                                Username: credentials.username,
+                                Pool: userPool
+                            });
+                            cognitoUser.authenticateUser(new AuthenticationDetails({
+                                Username: credentials.username,
+                                Password: credentials.password
+                            }), {
+                                onSuccess: function(result) {
+                                    console.log('Success', result);
+                                    resolve(result);
+                                },
+                                onFailure: function(err) {
+                                    console.log('Error', err);
+                                    reject(err);
+                                }
+                            });
+                        });
+                    };
+
+                    return {
+                        signUp: signUp,
+                        confirm: confirm,
+                        signIn: signIn
+                    };
+                }])
+                .controller('AppController', ['$rootScope', '$location', function($rootScope, $location) {
+                    $rootScope.isNavBarActive = function(path) {
+                        return $location.path() === path;
+                    };
                 }]);
 
             angular.injector(['ng']).invoke(['$http', function($http) {
