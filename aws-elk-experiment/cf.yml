@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Outputs:
+  ElasticsearchEndpoint:
+    Value: !GetAtt MyElasticsearchDomain.DomainEndpoint
   KibanaURL:
     Value: !Sub "https://${MyElasticsearchDomain.DomainEndpoint}/_plugin/kibana"
 

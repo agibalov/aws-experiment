@@ -1,0 +1,11 @@
+# https://www.elastic.co/guide/en/elasticsearch/client/curator/current/configfile.html
+
+client:
+  hosts:
+  - ${ES_HOST_WITH_PORT}
+  aws_key: ${AWS_ACCESS_KEY_ID}
+  aws_secret_key: ${AWS_SECRET_ACCESS_KEY}
+  aws_region: ${AWS_REGION}
+
+logging:
+  loglevel: DEBUG

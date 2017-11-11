@@ -1,0 +1,21 @@
+# https://www.elastic.co/guide/en/elasticsearch/client/curator/current/actionfile.html
+
+actions:
+  1:
+    action: create_index
+    options:
+      name: dummy-index-1
+      disable_action: True
+  2:
+    action: delete_indices
+    filters:
+    # https://www.elastic.co/guide/en/elasticsearch/client/curator/current/filtertype_age.html
+    - filtertype: age
+      source: creation_date
+      direction: older
+      unit: ${INDEX_AGE_UNIT}
+      unit_count: ${INDEX_AGE_UNIT_COUNT}
+    # https://www.elastic.co/guide/en/elasticsearch/client/curator/current/filtertype_pattern.html
+    - filtertype: pattern
+      kind: prefix
+      value: cwl-

@@ -35,6 +35,22 @@ const argv = yargs
         shell(`aws s3 rm s3://${deploymentBucketName} --recursive`);
         shell(`aws s3 rb s3://${deploymentBucketName} --force`);
     })
+    .command('delete-old-indexes', 'Delete old indexes', () => {}, () => {
+        console.log('Delete old indexes');
+
+        const esHost = getStackOutput('ElasticsearchEndpoint');
+        const esHostWithPort = `${esHost}:443`;
+
+        const awsAccessKeyId = getShellOutput('aws configure get aws_access_key_id --profile default');
+        const awsSecretAccessKey = getShellOutput('aws configure get aws_secret_access_key --profile default');
+
+        shell(`
+            AWS_ACCESS_KEY_ID=${awsAccessKeyId} \
+            AWS_SECRET_ACCESS_KEY=${awsSecretAccessKey} \
+            AWS_REGION=${region} \
+            ES_HOST_WITH_PORT=${esHostWithPort} \
+            ./curator-delete-old-indexes.sh`)
+    })
     .help()
     .argv;
 
@@ -55,4 +71,28 @@ function shell(command) {
     }
 
     return result;
+}
+
+function getShellOutput(command) {
+    const result = spawnSync(command, [], {
+        shell: '/bin/bash'
+    });
+
+    if(result.error) {
+        throw result.error;
+    }
+
+    if(result.status != 0) {
+        throw 'status != 0';
+    }
+
+    return result.stdout.toString().trim();
+}
+
+function getStackOutput(outputKey) {
+    return getShellOutput(`aws cloudformation describe-stacks \
+            --stack-name ${stackName} \
+            --query 'Stacks[0].Outputs[?OutputKey==\`'${outputKey}'\`].OutputValue' \
+            --output text \
+            --region ${region}`);
 }
