@@ -1,11 +1,9 @@
 package me.loki2302;
 
-import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.util.IOUtils;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -13,30 +11,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 public class DummyTest {
     private final static String TEST_BUCKET_NAME = "weufhiewurhi23uhr23r23";
 
-    private AmazonS3 amazonS3;
-
-    @Before
-    public void createAmazonS3Client() {
-        if(System.getProperty("LOCALSTACK") != null) {
-            amazonS3 = AmazonS3ClientBuilder
-                    .standard()
-                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
-                            "http://localhost:4572",
-                            "us-east-1"
-                    ))
-                    .withPathStyleAccessEnabled(true)
-                    .build();
-        } else {
-            amazonS3 = AmazonS3ClientBuilder.defaultClient();
-        }
-    }
+    @Rule
+    public final AmazonS3Provider amazonS3Provider = new AmazonS3Provider();
 
     @Test
     public void basicScenario() throws IOException {
+        AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
 
         PutObjectResult putObjectResult = amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
@@ -68,6 +53,10 @@ public class DummyTest {
 
     @Test
     public void versioningScenario() throws IOException {
+        // Whatever they use in LocalStack for S3, it doesn't seem to support versioning
+        assumeTrue(amazonS3Provider.isRunningAgainstAws());
+
+        AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
         amazonS3.setBucketVersioningConfiguration(new SetBucketVersioningConfigurationRequest(
                 TEST_BUCKET_NAME,
@@ -108,6 +97,10 @@ public class DummyTest {
 
     @Test
     public void eTagConstraintScenario() {
+        // Whatever they use in LocalStack for S3, it doesn't seem to support etags
+        assumeTrue(amazonS3Provider.isRunningAgainstAws());
+
+        AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
 
         amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
