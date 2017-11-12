@@ -1,0 +1,7 @@
+.gradle
+.idea
+*.iml
+build
+node_modules
+_packaged.yml
+logstoelasticsearch.zip

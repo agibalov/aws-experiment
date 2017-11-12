@@ -1,0 +1,37 @@
+group 'me.loki2302'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'distribution'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+mainClassName = 'me.loki2302.EmrHandler'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.3'
+}
+
+distributions {
+    main {
+        contents {
+            into('/') {
+                from compileJava
+            }
+            into('/') {
+                from 'src/main/resources'
+            }
+            into('/lib') {
+                from configurations.runtime
+            }
+        }
+    }
+}
