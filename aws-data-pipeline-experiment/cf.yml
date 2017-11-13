@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  DeploymentBucketName:
+    Type: String
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  VpcSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.0.0/24
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  VpcSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref VpcSubnet
+      RouteTableId: !Ref RouteTable
+
+  DummyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  DummyDataPipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MyDummyDataPipelineRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+            - elasticmapreduce.amazonaws.com
+            - datapipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSDataPipelineRole
+
+  DummyDataPipelineEc2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MyDummyDataPipelineEc2InstanceRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforDataPipelineRole
+
+  DummyDataPipelineEc2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: MyDummyDataPipelineEc2InstanceProfile
+      Path: /
+      Roles:
+      - !Ref DummyDataPipelineEc2InstanceRole
+
+  DummyDataPipeline:
+    Type: AWS::DataPipeline::Pipeline
+    Properties:
+      Name: MyDummyDataPipeline
+      ParameterObjects:
+      - Id: myDDBRegion
+        Attributes:
+        - Key: type
+          StringValue: String
+      - Id: myDDBTableName
+        Attributes:
+        - Key: type
+          StringValue: String
+      - Id: myDDBReadThroughputRatio
+        Attributes:
+        - Key: type
+          StringValue: Double
+      - Id: myOutputS3Loc
+        Attributes:
+        - Key: type
+          StringValue: AWS::S3::ObjectKey
+      ParameterValues:
+      - Id: myDDBRegion
+        StringValue: !Ref AWS::Region
+      - Id: myDDBTableName
+        StringValue: !Ref DummyTable
+      - Id: myDDBReadThroughputRatio
+        StringValue: "0.25"
+      - Id: myOutputS3Loc
+        StringValue: !Sub "s3://${DeploymentBucketName}"
+      PipelineObjects:
+      - Id: Default
+        Name: Default
+        Fields:
+        - Key: type
+          StringValue: Default
+        - Key: scheduleType
+          StringValue: ONDEMAND
+        - Key: role
+          StringValue: !Ref DummyDataPipelineRole
+        - Key: pipelineLogUri
+          StringValue: "#{myOutputS3Loc}/"
+        - Key: resourceRole
+          StringValue: !Ref DummyDataPipelineEc2InstanceProfile
+        - Key: failureAndRerunMode
+          StringValue: CASCADE
+      - Id: DDBSourceTable
+        Name: DDBSourceTable
+        Fields:
+        - Key: type
+          StringValue: DynamoDBDataNode
+        - Key: tableName
+          StringValue: "#{myDDBTableName}"
+        - Key: readThroughputPercent
+          StringValue: "#{myDDBReadThroughputRatio}"
+      - Id: S3BackupLocation
+        Name: S3BackupLocation
+        Fields:
+        - Key: type
+          StringValue: S3DataNode
+        - Key: directoryPath
+          StringValue: "#{myOutputS3Loc}/#{format(@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}"
+      - Id: TableBackupActivity
+        Name: TableBackupActivity
+        Fields:
+        - Key: type
+          StringValue: EmrActivity
+        - Key: resizeClusterBeforeRunning
+          StringValue: true
+        - Key: runsOn
+          RefValue: EmrClusterForBackup
+        - Key: maximumRetries
+          StringValue: "2"
+        - Key: input
+          RefValue: DDBSourceTable
+        - Key: output
+          RefValue: S3BackupLocation
+        - Key: step
+          StringValue: "s3://dynamodb-emr-#{myDDBRegion}/emr-ddb-storage-handler/2.1.0/emr-ddb-2.1.0.jar,org.apache.hadoop.dynamodb.tools.DynamoDbExport,#{output.directoryPath},#{input.tableName},#{input.readThroughputPercent}"
+      - Id: EmrClusterForBackup
+        Name: EmrClusterForBackup
+        Fields:
+        - Key: type
+          StringValue: EmrCluster
+        - Key: coreInstanceCount
+          StringValue: "1"
+        - Key: coreInstanceType
+          StringValue: m4.large
+        - Key: masterInstanceType
+          StringValue: m4.large
+        #- Key: amiVersion
+        #  StringValue: "3.9.0"
+        - Key: releaseLabel # instead of amiVersion. And probably I don't need a bootstrap action in this case
+          StringValue: "emr-5.9.0"
+        - Key: applications
+          StringValue: spark
+        - Key: applications
+          StringValue: hive
+        - Key: applications
+          StringValue: pig
+        - Key: region
+          StringValue: "#{myDDBRegion}"
+        #- Key: bootstrapAction
+        #  StringValue: "s3://#{myDDBRegion}.elasticmapreduce/bootstrap-actions/configure-hadoop, --yarn-key-value,yarn.nodemanager.resource.memory-mb=11520,--yarn-key-value,yarn.scheduler.maximum-allocation-mb=11520,--yarn-key-value,yarn.scheduler.minimum-allocation-mb=1440,--yarn-key-value,yarn.app.mapreduce.am.resource.mb=2880,--mapred-key-value,mapreduce.map.memory.mb=5760,--mapred-key-value,mapreduce.map.java.opts=-Xmx4608M,--mapred-key-value,mapreduce.reduce.memory.mb=2880,--mapred-key-value,mapreduce.reduce.java.opts=-Xmx2304m,--mapred-key-value,mapreduce.map.speculative=false"
+        - Key: subnetId
+          StringValue: !Ref VpcSubnet

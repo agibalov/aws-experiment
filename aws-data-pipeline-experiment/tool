@@ -1,0 +1,83 @@
+#!/usr/bin/env node
+
+const { spawnSync } = require('child_process');
+
+const region = 'us-east-1';
+const stackName = 'DataPipelineExperiment2';
+const deploymentBucketName = 'datapipeline-experiment-bucket';
+
+const yargs = require('yargs');
+const argv = yargs
+    .showHelpOnFail(true)
+    .demandCommand(1, '')
+    .command('deploy', 'Deploy everything', () => {}, () => {
+        console.log('Deploying');
+
+        shell(`aws s3 mb s3://${deploymentBucketName} --region ${region}`);
+
+        shell(`aws cloudformation package \
+            --template-file cf.yml \
+            --s3-bucket ${deploymentBucketName} \
+            --output-template-file _packaged.yml`);
+
+        shell(`aws cloudformation deploy \
+            --template-file _packaged.yml \
+            --stack-name ${stackName} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region ${region} \
+            --parameter-overrides \
+            DeploymentBucketName=${deploymentBucketName}`);
+    })
+    .command('undeploy', 'Undeploy everything', () => {}, () => {
+        console.log('Undeploying');
+
+        shell(`aws cloudformation delete-stack --stack-name ${stackName} --region ${region}`);
+        shell(`aws cloudformation wait stack-delete-complete --stack-name ${stackName} --region ${region}`);
+        shell(`aws s3 rm s3://${deploymentBucketName} --recursive`);
+        shell(`aws s3 rb s3://${deploymentBucketName} --force`);
+    })
+    .help()
+    .argv;
+
+function shell(command) {
+    console.log(command);
+
+    const result = spawnSync(command, [], {
+        shell: '/bin/bash',
+        stdio: 'inherit'
+    });
+
+    if(result.error) {
+        throw result.error;
+    }
+
+    if(result.status != 0) {
+        throw 'status != 0';
+    }
+
+    return result;
+}
+
+function getShellOutput(command) {
+    const result = spawnSync(command, [], {
+        shell: '/bin/bash'
+    });
+
+    if(result.error) {
+        throw result.error;
+    }
+
+    if(result.status != 0) {
+        throw 'status != 0';
+    }
+
+    return result.stdout.toString().trim();
+}
+
+function getStackOutput(outputKey) {
+    return getShellOutput(`aws cloudformation describe-stacks \
+            --stack-name ${stackName} \
+            --query 'Stacks[0].Outputs[?OutputKey==\`'${outputKey}'\`].OutputValue' \
+            --output text \
+            --region ${region}`);
+}
