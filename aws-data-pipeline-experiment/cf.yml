@@ -189,9 +189,7 @@ Resources:
           StringValue: m4.large
         - Key: masterInstanceType
           StringValue: m4.large
-        #- Key: amiVersion
-        #  StringValue: "3.9.0"
-        - Key: releaseLabel # instead of amiVersion. And probably I don't need a bootstrap action in this case
+        - Key: releaseLabel
           StringValue: "emr-5.9.0"
         - Key: applications
           StringValue: spark
@@ -201,7 +199,5 @@ Resources:
           StringValue: pig
         - Key: region
           StringValue: "#{myDDBRegion}"
-        #- Key: bootstrapAction
-        #  StringValue: "s3://#{myDDBRegion}.elasticmapreduce/bootstrap-actions/configure-hadoop, --yarn-key-value,yarn.nodemanager.resource.memory-mb=11520,--yarn-key-value,yarn.scheduler.maximum-allocation-mb=11520,--yarn-key-value,yarn.scheduler.minimum-allocation-mb=1440,--yarn-key-value,yarn.app.mapreduce.am.resource.mb=2880,--mapred-key-value,mapreduce.map.memory.mb=5760,--mapred-key-value,mapreduce.map.java.opts=-Xmx4608M,--mapred-key-value,mapreduce.reduce.memory.mb=2880,--mapred-key-value,mapreduce.reduce.java.opts=-Xmx2304m,--mapred-key-value,mapreduce.map.speculative=false"
         - Key: subnetId
           StringValue: !Ref VpcSubnet
