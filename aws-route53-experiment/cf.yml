@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  DeploymentBucketName:
+    Type: String
+  AgibalovIoHostedZoneId:
+    Type: String
+    Default: Z274QH73NTZR2J
+    Description: Hosted Zone ID of my agibalov.io hosted zone
+
+Outputs:
+  WebSiteUrl:
+    Value: !Sub "https://${DummyApiDomainName}/"
+
+Resources:
+  DummyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: DummyApi
+      Body:
+        swagger: "2.0"
+        paths:
+          /:
+            get:
+              responses:
+                "200":
+                  headers:
+                    Content-Type:
+                      type: string
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    { "statusCode": 200 }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Content-Type: "'text/html'"
+                    responseTemplates:
+                      text/html: |
+                        <html>
+                          <head>
+                            <title>Hello World</title>
+                          </head>
+                          <body>
+                            <h1>Hi there!</h1>
+                          </body>
+                        </html>
+
+  DummyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref DummyApi
+      StageName: Dummy
+
+  DummyApiDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: agibalov.io
+      CertificateArn: !Ref DummyCertificate
+
+  DummyApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref DummyApiDomainName
+      RestApiId: !Ref DummyApi
+      Stage: Dummy
+
+  DummyRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt DummyApiDomainName.DistributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # always the same, see here: http://docs.aws.amazon.com/general/latest/gr/rande.html#cf_region
+      HostedZoneId: !Ref AgibalovIoHostedZoneId
+      Name: !Sub "${DummyApiDomainName}."
+      Type: A
+
+  DummyCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: "*.agibalov.io"
+      Tags:
+      - Key: Name
+        Value: MyCertificateForAgibalovIo
