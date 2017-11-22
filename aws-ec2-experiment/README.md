@@ -1,6 +1,6 @@
-# aws-route53-experiment
+# aws-ec2-experiment
 
-Learning AWS Route53.
+Learning AWS EC2.
 
 Do `npm i` to install dependencies for `./tool`.
 
