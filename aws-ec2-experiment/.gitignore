@@ -1,0 +1,4 @@
+.idea
+node_modules
+_packaged.yml
+*.pem

@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  Ip:
+    Value: !GetAtt MyEc2Instance.PublicIp
+  DnsName:
+    Value: !GetAtt MyEc2Instance.PublicDnsName
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: MyEc2Vpc
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.0.0/24
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: MySecurityGroup
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+
+  MyEc2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              nginx: []
+          files:
+            /tmp/nginx.conf:
+              content: |
+                events {}
+                http {
+                  server {
+                    listen 80;
+                    location / {
+                      root /var/www/html;
+                      index index.html;
+                    }
+                  }
+                }
+            /var/www/html/index.html:
+              content: |
+                <h1>Hello World!</h1>
+          services:
+            sysvinit:
+              nginx:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-6057e21a
+      KeyName: MyDummyKeyPair2
+      UserData: # TODO: use cfn-hup to reload this stuff on stack redeployments - it doesn't work otherwise http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-hup.html
+        Fn::Base64: !Sub |
+          #!/bin/bash
+
+          yum update -y aws-cfn-bootstrap
+
+          /opt/aws/bin/cfn-init -v \
+            --stack ${AWS::StackName} \
+            --resource MyEc2Instance
+
+          cp /tmp/nginx.conf /etc/nginx/nginx.conf
+          service nginx restart
+
+      NetworkInterfaces:
+      - AssociatePublicIpAddress: true
+        DeviceIndex: "0"
+        GroupSet:
+        - !Ref MySecurityGroup
+        SubnetId: !Ref PublicSubnet
