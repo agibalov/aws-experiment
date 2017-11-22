@@ -75,7 +75,21 @@ Resources:
             yum:
               nginx: []
           files:
-            /tmp/nginx.conf:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackName}
+                interval=1
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.MyEc2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v \
+                  --stack ${AWS::StackName} \
+                  --resource MyEc2Instance
+                runas=root
+            /etc/nginx/nginx.conf:
               content: |
                 events {}
                 http {
@@ -95,22 +109,27 @@ Resources:
               nginx:
                 enabled: true
                 ensureRunning: true
+                files:
+                - /etc/nginx/nginx.conf
+              cfn-hup:
+                enabled: true
+                ensureRunning: true
+                files:
+                - /etc/cfn/cfn-hup.conf
+                - /etc/cfn/hooks.d/cfn-auto-reloader.conf
     Properties:
       InstanceType: t2.micro
       ImageId: ami-6057e21a
       KeyName: MyDummyKeyPair2
-      UserData: # TODO: use cfn-hup to reload this stuff on stack redeployments - it doesn't work otherwise http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-hup.html
+      UserData:
         Fn::Base64: !Sub |
-          #!/bin/bash
+          #!/bin/bash -xe
 
           yum update -y aws-cfn-bootstrap
 
           /opt/aws/bin/cfn-init -v \
             --stack ${AWS::StackName} \
             --resource MyEc2Instance
-
-          cp /tmp/nginx.conf /etc/nginx/nginx.conf
-          service nginx restart
 
       NetworkInterfaces:
       - AssociatePublicIpAddress: true
