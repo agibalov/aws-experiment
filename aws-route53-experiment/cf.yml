@@ -57,7 +57,7 @@ Resources:
   DummyApiDomainName:
     Type: AWS::ApiGateway::DomainName
     Properties:
-      DomainName: agibalov.io
+      DomainName: test.agibalov.io
       CertificateArn: !Ref DummyCertificate
 
   DummyApiBasePathMapping:
@@ -83,4 +83,4 @@ Resources:
       DomainName: "*.agibalov.io"
       Tags:
       - Key: Name
-        Value: MyCertificateForAgibalovIo
+        Value: MyCertificateForTestAgibalovIo
