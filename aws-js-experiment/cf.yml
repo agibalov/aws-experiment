@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  WebsiteBucketName:
+    Type: String
+  DataBucketName:
+    Type: String
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+  DummyUserAccessKeyId:
+    Value: !Ref DummyUserAccessKey
+  DummyUserSecretAccessKey:
+    Value: !GetAtt DummyUserAccessKey.SecretAccessKey
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref WebsiteBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Delete
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref DataBucketName
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+          - '*'
+          AllowedMethods:
+          - GET
+          - PUT
+          - POST
+          - DELETE
+          AllowedOrigins:
+          - '*'
+    DeletionPolicy: Delete
+
+  DummyUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: dummyuser1
+      Policies:
+      - PolicyName: ReadWriteDataBucket
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            Resource: !Sub "${DataBucket.Arn}/*"
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource: !GetAtt DataBucket.Arn
+
+  DummyUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref DummyUser

@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+    <head>
+        <title>In-browser S3 access demo</title>
+    </head>
+    <body ng-controller="AppController">
+        <p>Demo: read and write S3 data from in-browser JS</p>
+        <p>Data: {{data}}</p>
+
+        <button type="button" ng-click="getDataFromS3()">Get data from S3</button>
+        <button type="button" ng-click="putDataToS3()">Put data to S3</button>
+        <button type="button" ng-click="deleteDataFromS3()">Delete data from S3</button>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.167.0/aws-sdk.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+        <script>
+            angular.module('app', [], function(config, s3ServiceProvider) {
+                s3ServiceProvider.setCredentials({
+                    accessKeyId: config.awsKey,
+                    secretAccessKey: config.awsSecret
+                });
+                s3ServiceProvider.setBucket(config.s3Bucket);
+                s3ServiceProvider.setKey(config.s3Key);
+            }).controller('AppController', function($scope, s3Service) {
+                    $scope.data = '';
+
+                    $scope.getDataFromS3 = function() {
+                        s3Service.getData().then(function(data) {
+                            $scope.data = new TextDecoder('utf-8').decode(data.Body);
+                        }, function(error) {
+                            $scope.data = 'Error! ' + error.message;
+                        });
+                    };
+
+                    $scope.putDataToS3 = function() {
+                        s3Service.putData('Hey there! ' + new Date()).then(function(data) {
+                            $scope.data = 'Success!';
+                        }, function(error) {
+                            $scope.data = 'Error! ' + error.message;
+                        });
+                    };
+
+                    $scope.deleteDataFromS3 = function() {
+                        s3Service.deleteData().then(function(data) {
+                            $scope.data = 'Success!';
+                        }, function(error) {
+                            $scope.data = 'Error! ' + error.message;
+                        });
+                    };
+                })
+                .provider('s3Service', {
+                    $get: function($q) {
+                        function S3Service(s3, bucket, key) {
+                            this.s3 = s3;
+                            this.bucket = bucket;
+                            this.key = key;
+                        };
+                        S3Service.prototype.getData = function() {
+                            var self = this;
+                            return $q(function(resolve, reject) {
+                                self.s3.getObject({
+                                    Bucket: self.bucket,
+                                    Key: self.key
+                                }, function(err, data) {
+                                    if(err) {
+                                        console.log('Error!', err);
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    console.log('Success!', data);
+                                    resolve(data);
+                                });
+                            });
+                        };
+                        S3Service.prototype.putData = function(data) {
+                            var self = this;
+                            return $q(function(resolve, reject) {
+                                self.s3.putObject({
+                                    Bucket: self.bucket,
+                                    Key: self.key,
+                                    Body: data
+                                }, function(err, data) {
+                                    if(err) {
+                                        console.log('Error!', err);
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    console.log('Success!', data);
+                                    resolve(data);
+                                });
+                            });
+                        };
+                        S3Service.prototype.deleteData = function() {
+                            var self = this;
+                            return $q(function(resolve, reject) {
+                                self.s3.deleteObject({
+                                    Bucket: self.bucket,
+                                    Key: self.key
+                                }, function(err, data) {
+                                    if(err) {
+                                        console.log('Error!', err);
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    console.log('Success!', data);
+                                    resolve(data);
+                                });
+                            });
+                        };
+
+                        var s3 = new AWS.S3({
+                            accessKeyId: this.credentials.accessKeyId,
+                            secretAccessKey: this.credentials.secretAccessKey
+                        });
+
+                        return new S3Service(s3, this.bucket, this.key);
+                    },
+                    setCredentials: function(credentials) {
+                        this.credentials = credentials;
+                    },
+                    setBucket: function(bucket) {
+                        this.bucket = bucket;
+                    },
+                    setKey: function(key) {
+                        this.key = key;
+                    }
+                });
+
+            angular.injector(['ng']).invoke(function($http) {
+                $http.get('/config.json').then(function(response) {
+                    var config = response.data;
+                    angular.module('app')
+                        .constant('config', config);
+
+                    angular.bootstrap(document, ['app']);
+                }, function(response) {
+                    console.log('Failed to load /config.json');
+                });
+            });
+        </script>
+    </body>
+</html>
