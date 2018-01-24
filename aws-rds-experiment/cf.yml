@@ -1,8 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Outputs:
-  RdsInstanceIp:
-    Value: !Sub "${RdsInstance.Endpoint.Address}:${RdsInstance.Endpoint.Port}"
+  RdsInstanceAddress:
+    Value: !GetAtt RdsInstance.Endpoint.Address
+  RdsInstancePort:
+    Value: !GetAtt RdsInstance.Endpoint.Port
 
 Resources:
   RdsInstance:

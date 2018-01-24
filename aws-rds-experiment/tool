@@ -6,7 +6,7 @@ const region = 'us-east-1';
 const stackName = 'rds-experiment';
 
 const yargs = require('yargs');
-yargs
+const _ = yargs
     .showHelpOnFail(true)
     .demandCommand(1, '')
     .command('deploy', 'Do deploy things', () => {
@@ -24,6 +24,27 @@ yargs
 
         shell(`aws cloudformation delete-stack --stack-name ${stackName} --region ${region}`);
         shell(`aws cloudformation wait stack-delete-complete --stack-name ${stackName} --region ${region}`);
+    })
+    .command('create-db', 'Create a dummy database',  (yargs) => {
+        return yargs.option('name', {
+            demandOption: true
+        })
+    }, (argv) => {
+        console.log('Creating a dummy database');
+
+        const host = getStackOutput('RdsInstanceAddress');
+        console.log(`DB host: ${host}`);
+
+        const port = getStackOutput('RdsInstancePort');
+        console.log(`DB port: ${port}`);
+
+        const name = argv.name;
+        console.log(`DB name: ${name}`);
+
+        shell(`./gradlew flywayMigrate \
+            -PdbHost=${host} \
+            -PdbPort=${port} \
+            -PdbName=${name}`)
     })
     .help()
     .argv;
