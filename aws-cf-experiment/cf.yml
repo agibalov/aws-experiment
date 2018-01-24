@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  EnvTag:
+    Type: String
+  EnvType:
+    Type: String
+
+Mappings:
+  EnvironmentMap:
+    dev:
+      TheTableRcu: 1
+      TheTableWcu: 1
+    qa:
+      TheTableRcu: 2
+      TheTableWcu: 2
+
+Resources:
+  TheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${EnvTag}-TheTable"
+      AttributeDefinitions:
+      - AttributeName: Id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: Id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: !FindInMap [ EnvironmentMap, !Ref EnvType, "TheTableRcu" ]
+        WriteCapacityUnits: !FindInMap [ EnvironmentMap, !Ref EnvType, "TheTableWcu" ]
