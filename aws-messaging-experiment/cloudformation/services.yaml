@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  IncludeVisitEnrichmentService:
+    Type: String
+    AllowedValues:
+    - true
+    - false
+  IncludeGreetingsService:
+    Type: String
+    AllowedValues:
+    - true
+    - false
+
+Conditions:
+  IncludeVisitEnrichmentService: !Equals [ !Ref IncludeVisitEnrichmentService, "true" ]
+  IncludeGreetingsService: !Equals [ !Ref IncludeGreetingsService, "true" ]
+  IncludeEnrichedVisitsKinesisStream: !Or [
+    Condition: IncludeVisitEnrichmentService,
+    Condition: IncludeGreetingsService
+  ]
+
+Outputs:
+  VisitsKinesisStreamName:
+    Condition: IncludeVisitEnrichmentService
+    Value: !Ref VisitsKinesisStream
+  EnrichedVisitsKinesisStreamName:
+    Condition: IncludeEnrichedVisitsKinesisStream
+    Value: !Ref EnrichedVisitsKinesisStream
+
+Resources:
+  KinesisEverythingPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Action: kinesis:*
+          Resource: '*'
+
+  WriteLogsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          - logs:DescribeLogStreams
+          Resource: '*'
+
+  VisitsKinesisStream:
+    Type: AWS::Kinesis::Stream
+    Condition: IncludeVisitEnrichmentService
+    Properties:
+      ShardCount: 1
+
+  VisitEnrichmentServiceLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Condition: IncludeVisitEnrichmentService
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - !Ref KinesisEverythingPolicy
+      - !Ref WriteLogsPolicy
+
+  VisitEnrichmentServiceLambdaFunction:
+    Type: AWS::Lambda::Function
+    Condition: IncludeVisitEnrichmentService
+    Properties:
+      Handler: io.agibalov.visitenrichmentservice.VisitEnrichmentService::handleKinesisEvent
+      Role: !GetAtt VisitEnrichmentServiceLambdaFunctionRole.Arn
+      Code: ../visit-enrichment-service/build/distributions/visit-enrichment-service-1.0-SNAPSHOT.zip
+      Runtime: java8
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          ENRICHED_VISITS_KINESIS_STREAM_NAME: !Ref EnrichedVisitsKinesisStream
+
+  VisitEnrichmentServiceLambdaFunctionToVisitsKinesisStreamEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: IncludeVisitEnrichmentService
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt VisitsKinesisStream.Arn
+      FunctionName: !GetAtt VisitEnrichmentServiceLambdaFunction.Arn
+      StartingPosition: LATEST
+
+  VisitEnrichmentServiceLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IncludeVisitEnrichmentService
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${VisitEnrichmentServiceLambdaFunction}"
+      RetentionInDays: 1
+
+  EnrichedVisitsKinesisStream:
+    Type: AWS::Kinesis::Stream
+    Condition: IncludeEnrichedVisitsKinesisStream
+    Properties:
+      ShardCount: 1
+
+  GreetingsServiceLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Condition: IncludeGreetingsService
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - !Ref KinesisEverythingPolicy
+      - !Ref WriteLogsPolicy
+
+  GreetingsServiceLambdaFunction:
+    Type: AWS::Lambda::Function
+    Condition: IncludeGreetingsService
+    Properties:
+      Handler: io.agibalov.greetingsservice.GreetingsService::handleKinesisEvent
+      Role: !GetAtt GreetingsServiceLambdaFunctionRole.Arn
+      Code: ../greetings-service/build/distributions/greetings-service-1.0-SNAPSHOT.zip
+      Runtime: java8
+      MemorySize: 512
+      Timeout: 60
+
+  GreetingsServiceLambdaFunctionToEnrichedVisitsKinesisStreamEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: IncludeGreetingsService
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt EnrichedVisitsKinesisStream.Arn
+      FunctionName: !GetAtt GreetingsServiceLambdaFunction.Arn
+      StartingPosition: LATEST
+
+  GreetingsServiceLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IncludeGreetingsService
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GreetingsServiceLambdaFunction}"
+      RetentionInDays: 1

@@ -1,0 +1,5 @@
+rootProject.name = 'aws-messaging-experiment'
+include 'visit-enrichment-service'
+include 'greetings-service'
+include 'tests'
+

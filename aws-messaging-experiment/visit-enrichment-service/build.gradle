@@ -1,0 +1,24 @@
+apply plugin: 'distribution'
+
+dependencies {
+    compile group: 'com.amazonaws', name: 'aws-lambda-java-events', version: awsLambdaJavaEventsVersion
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-kinesis', version: awsJavaSdkKinesisVersion
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: logbackClassicVersion
+    //compile group: 'net.logstash.logback', name: 'logstash-logback-encoder', version: logstashLogbackEncoderVersion
+}
+
+distributions {
+    main {
+        contents {
+            into('/') {
+                from compileJava
+            }
+            into('/') {
+                from 'src/main/resources'
+            }
+            into('/lib') {
+                from configurations.runtime
+            }
+        }
+    }
+}

@@ -1,0 +1,13 @@
+test {
+    exclude '**'
+}
+
+task performance(type: Test) {
+    group 'verification'
+    useJUnit()
+}
+
+dependencies {
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-kinesis', version: awsJavaSdkKinesisVersion
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: logbackClassicVersion
+}
