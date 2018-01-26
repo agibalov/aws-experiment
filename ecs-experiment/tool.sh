@@ -71,7 +71,7 @@ elif [ "${command}" == "deploy-app1" ]; then
   app1JarFilename=$(basename $(ls build/libs/*.jar))
   ecrRepository1Url=$(get_stack_output ${App1EcrStackName} "RepositoryUrl")
   $(aws ecr get-login --no-include-email --region ${Region})
-  tag=$(uuidgen | tail -c 8)
+  tag=build-$(uuidgen | tail -c 8)
   app1Image="${ecrRepository1Url}:${tag}"
   docker build \
     --build-arg jarFilename=${app1JarFilename} \
