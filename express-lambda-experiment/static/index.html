@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+    <head>
+        <title>hello world</title>
+        <base href="/Dummy/">
+    </head>
+    <body ng-app="app">
+        <h1>hello world</h1>
+        <ul>
+            <li><a href="./">Index</a></li>
+            <li><a href="page1">Page #1</a></li>
+        </ul>
+        <div ng-view></div>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular-route.min.js"></script>
+        <script>
+            angular.module('app', ['ngRoute'])
+                .config(($locationProvider, $routeProvider) => {
+                    $locationProvider.html5Mode(true);
+                    $routeProvider
+                        .when('/', {
+                            template: 'index page'
+                        })
+                        .when('/page1', {
+                            resolve: {
+                                config: $http => $http.get('/Dummy/config')
+                                    .then(response => response.data)
+                            },
+                            template: `
+                            <h3>page #1</h3>
+                            <pre>{{config|json}}</pre>
+                            `,
+                            controller: function($scope, config) {
+                                $scope.config = config;
+                            }
+                        })
+                        .otherwise({
+                            redirectTo: '/'
+                        });
+                });
+        </script>
+    </body>
+</html>
