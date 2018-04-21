@@ -1,4 +1,4 @@
-group 'me.loki2302'
+group 'io.agibalov'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     testCompile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.201'
     testCompile group: 'org.testcontainers', name: 'testcontainers', version: '1.4.3'
     testCompile group: 'org.testcontainers', name: 'dynalite', version: '1.4.3'

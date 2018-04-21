@@ -1,4 +1,4 @@
-package me.loki2302;
+package io.agibalov;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.*;
@@ -16,7 +16,8 @@ public class BasicDynamoDbTest {
 
     @Test
     public void dynamoDbShouldWork() throws InterruptedException, IOException {
-        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB()
+                .build();
         try(DynamoDbTableResource ignore = new DynamoDbTableResource(amazonDynamoDB, new CreateTableRequest()
                 .withTableName(TEST_TABLE_NAME)
                 .withAttributeDefinitions(new AttributeDefinition()

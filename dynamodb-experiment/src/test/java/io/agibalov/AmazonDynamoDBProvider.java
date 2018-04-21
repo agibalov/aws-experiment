@@ -1,6 +1,5 @@
-package me.loki2302;
+package io.agibalov;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -9,17 +8,21 @@ import org.testcontainers.dynamodb.DynaliteContainer;
 
 public class AmazonDynamoDBProvider implements TestRule {
     private DynaliteContainer dynaliteContainer;
-    private AmazonDynamoDB amazonDynamoDB;
 
     public AmazonDynamoDBProvider() {
         dynaliteContainer = System.getProperty("AWS") != null ? null : new DynaliteContainer();
     }
 
-    public AmazonDynamoDB getAmazonDynamoDB() {
+    public AmazonDynamoDBClientBuilder getAmazonDynamoDB() {
+        AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard();
+
         if(dynaliteContainer != null) {
-            return dynaliteContainer.getClient();
+            amazonDynamoDBClientBuilder
+                    .withEndpointConfiguration(dynaliteContainer.getEndpointConfiguration())
+                    .withCredentials(dynaliteContainer.getCredentials());
         }
-        return amazonDynamoDB;
+
+        return amazonDynamoDBClientBuilder;
     }
 
     @Override
@@ -30,12 +33,7 @@ public class AmazonDynamoDBProvider implements TestRule {
         return new Statement() {
             @Override
             public void evaluate() throws Throwable {
-                amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
-                try {
-                    base.evaluate();
-                } finally {
-                    amazonDynamoDB.shutdown();
-                }
+                base.evaluate();
             }
         };
     }

@@ -1,4 +1,4 @@
-package me.loki2302;
+package io.agibalov;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;

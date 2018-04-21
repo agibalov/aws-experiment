@@ -1,4 +1,4 @@
-package me.loki2302;
+package io.agibalov;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.datamodeling.*;
@@ -22,7 +22,8 @@ public class ModelingTest {
 
     @Test
     public void modelingShouldWork() throws IOException {
-        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB();
+        AmazonDynamoDB amazonDynamoDB = amazonDynamoDBProvider.getAmazonDynamoDB()
+                .build();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
                 .withTableNameOverride(new DynamoDBMapperConfig.TableNameOverride("dummy2"))
                 .build();
