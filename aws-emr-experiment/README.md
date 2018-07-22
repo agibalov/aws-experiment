@@ -12,10 +12,15 @@ Do `npm i` to install dependencies for `./tool`.
 ## Experiment #1 - running the custom JAR
 
 * `./gradlew clean build` to build the custom JAR.
-* `./tool submit` to create an EMR step.
+* `./tool submit-jar` to create an EMR step.
 * After it, go to AWS console, wait for the step to finish and the check the step's stdout.
 
-## Experiment #2 - Hive, S3 and Dynamo
+## Experiment #2 - Hive and S3
+
+* `./tool submit-hive` to create an EMR step.
+* Go to AWS console, wait for the step to finish and look for output in S3 bucket.
+
+## Experiment #3 - Hive, S3 and Dynamo
 
 Hive runs on top of EMR and allows one to work with S3 CSVs and DynamoDB table in an SQL-like manner. SSH to EMR master:
 
@@ -203,3 +208,5 @@ Also check the actual CSV at `s3://emr-experiment-bucket/output/`:
 hello,1
 world,2
 ```
+
+NOTE: while SELECTs and INSERTs are totally OK, DELETEs and UPDATEs are not supported (at least by Dynamo).

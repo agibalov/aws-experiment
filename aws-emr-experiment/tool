@@ -39,6 +39,10 @@ const argv = yargs
             sample.csv \
             s3://${deploymentBucketName}/sample/ \
             --region ${region}`);
+        shell(`aws s3 cp \
+            dummy.q \
+            s3://${deploymentBucketName} \
+            --region ${region}`);
         shell(`aws cloudformation package \
             --template-file cf.yml \
             --s3-bucket ${deploymentBucketName} \
@@ -61,24 +65,39 @@ const argv = yargs
         shell(`aws s3 rm s3://${deploymentBucketName} --recursive`);
         shell(`aws s3 rb s3://${deploymentBucketName} --force`);
     })
-    .command('submit', 'Submit a dummy custom JAR step', () => {}, () => {
+    .command('submit-jar', 'Submit a dummy custom JAR step', () => {}, () => {
         console.log('Submitting a step');
 
-        shell(`aws s3 cp \
-            build/libs/aws-emr-experiment-1.0-SNAPSHOT.jar \
-            s3://${deploymentBucketName} \
-            --region ${region}`);
-
-        const clusterId = getStackOutput('ClusterId');
         writeFileSync('step.json', JSON.stringify([{
             'Name': 'MyDummyCustomJarStep',
-            'Args': [ 'argOne', 'argTwo', 'argThree' ],
+            'Type': 'CUSTOM_JAR',
             'Jar': `s3://${deploymentBucketName}/aws-emr-experiment-1.0-SNAPSHOT.jar`,
             'MainClass': 'me.loki2302.EmrHandler',
-            'Type': 'CUSTOM_JAR',
+            'Args': [ 'argOne', 'argTwo', 'argThree' ],
             'Properties': 'myCustomSystemPropertyOne=theValueForIt,myCustomSystemPropertyTwo=hahaha'
         }]));
 
+        const clusterId = getStackOutput('ClusterId');
+        shell(`aws emr add-steps \
+            --cluster-id ${clusterId} \
+            --steps file://./step.json`);
+    })
+    .command('submit-hive', 'Submit a Hive step', () => {}, () => {
+        console.log('Submitting a Hive step');
+
+        const outputS3Url = `s3://${deploymentBucketName}/script-output/`;
+        writeFileSync('step.json', JSON.stringify([{
+            'Name': 'MyDummyHiveStep',
+            'Type': 'HIVE',
+            'Args': [
+                '-f', `s3://${deploymentBucketName}/dummy.q`,
+                '-d', `INPUT=s3://${deploymentBucketName}/sample/`,
+                '-d', `OUTPUT=${outputS3Url}` ]
+        }]));
+
+        shell(`aws s3 rm ${outputS3Url} --recursive`);
+
+        const clusterId = getStackOutput('ClusterId');
         shell(`aws emr add-steps \
             --cluster-id ${clusterId} \
             --steps file://./step.json`);
