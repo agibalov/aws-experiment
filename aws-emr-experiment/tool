@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { spawnSync } = require('child_process');
+const { writeFileSync } = require('fs');
 
 const region = 'us-east-1';
 const stackName = 'EmrExperiment1';
@@ -38,6 +39,29 @@ const argv = yargs
         shell(`aws cloudformation wait stack-delete-complete --stack-name ${stackName} --region ${region}`);
         shell(`aws s3 rm s3://${deploymentBucketName} --recursive`);
         shell(`aws s3 rb s3://${deploymentBucketName} --force`);
+    })
+    .command('submit', 'Submit a dummy custom JAR step', () => {}, () => {
+        console.log('Submitting a step');
+
+        shell(`aws s3 cp \
+            build/libs/aws-emr-experiment-1.0-SNAPSHOT.jar \
+            s3://${deploymentBucketName} \
+            --region ${region}`);
+
+        const clusterId = getStackOutput('ClusterId');
+
+        require('fs').writeFileSync('step.json', JSON.stringify([{
+            'Name': 'MyDummyCustomJarStep',
+            'Args': [ 'argOne', 'argTwo', 'argThree' ],
+            'Jar': `s3://${deploymentBucketName}/aws-emr-experiment-1.0-SNAPSHOT.jar`,
+            'MainClass': 'me.loki2302.EmrHandler',
+            'Type': 'CUSTOM_JAR',
+            'Properties': 'myCustomSystemPropertyOne=theValueForIt,myCustomSystemPropertyTwo=hahaha'
+        }]));
+
+        shell(`aws emr add-steps \
+            --cluster-id ${clusterId} \
+            --steps file://./step.json`);
     })
     .help()
     .argv;

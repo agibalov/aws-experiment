@@ -56,7 +56,7 @@ Resources:
     Type: AWS::EMR::Cluster
     Properties:
       Name: MyDummyEmrCluster
-      ReleaseLabel: emr-5.9.0
+      ReleaseLabel: emr-5.16.0
       LogUri: !Sub "s3://${DeploymentBucketName}/"
       ServiceRole: !Ref DummyEmrClusterServiceRole
       JobFlowRole: !Ref DummyEmrClusterEc2InstanceProfile
@@ -75,23 +75,7 @@ Resources:
       Applications:
       # http://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-release-components.html
       - Name: Hadoop
-      - Name: Spark
-
-  DummyEmrStep:
-    Type: AWS::EMR::Step
-    Properties:
-      Name: MyDummyEmrStep2
-      ActionOnFailure: CONTINUE
-      JobFlowId: !Ref DummyEmrCluster
-      HadoopJarStep:
-        Args:
-        - hey
-        - there
-        Jar: !Sub "s3://${DeploymentBucketName}/aws-emr-experiment-1.0-SNAPSHOT.jar"
-        MainClass: me.loki2302.EmrHandler
-        StepProperties:
-        - Key: dummyKey
-          Value: dummyValue
+      - Name: Hive
 
   DummyEmrClusterEc2InstanceRole:
     Type: AWS::IAM::Role

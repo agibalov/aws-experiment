@@ -4,4 +4,4 @@
 build
 node_modules
 _packaged.yml
-logstoelasticsearch.zip
+step.json
