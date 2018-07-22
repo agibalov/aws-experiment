@@ -3,6 +3,8 @@ AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   DeploymentBucketName:
     Type: String
+  Ec2KeyName:
+    Type: String
 
 Outputs:
   ClusterId:
@@ -52,6 +54,17 @@ Resources:
       SubnetId: !Ref VpcSubnet
       RouteTableId: !Ref RouteTable
 
+  PublicSshSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow anyone to SSH
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+        CidrIp: 0.0.0.0/0
+
   DummyEmrCluster:
     Type: AWS::EMR::Cluster
     Properties:
@@ -61,7 +74,10 @@ Resources:
       ServiceRole: !Ref DummyEmrClusterServiceRole
       JobFlowRole: !Ref DummyEmrClusterEc2InstanceProfile
       Instances:
+        Ec2KeyName: !Ref Ec2KeyName
         Ec2SubnetId: !Ref VpcSubnet
+        AdditionalMasterSecurityGroups:
+        - !Ref PublicSshSecurityGroup
         MasterInstanceGroup:
           InstanceCount: 1
           InstanceType: m1.medium
@@ -114,3 +130,17 @@ Resources:
       Path: /
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole
+
+  DummyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DummyTable
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
