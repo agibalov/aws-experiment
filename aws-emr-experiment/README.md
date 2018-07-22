@@ -37,7 +37,8 @@ Time taken: 1.339 seconds
 Select all:
 
 ```
-hive> select * from SampleTable;
+select * from SampleTable;
+
 OK
 1	hello
 2	world
