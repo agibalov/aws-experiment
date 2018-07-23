@@ -107,6 +107,8 @@ const argv = yargs
         console.log(`aws emr ssh --cluster-id ${clusterId} --key-pair-file ./${ec2KeyLocalFilename}`);
     })
     .help()
+    .demandCommand()
+    .strict()
     .argv;
 
 function shell(command) {
