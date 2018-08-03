@@ -1,5 +1,6 @@
 package io.agibalov;
 
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -17,9 +18,12 @@ public class AmazonDynamoDBProvider implements TestRule {
         AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard();
 
         if(dynaliteContainer != null) {
-            amazonDynamoDBClientBuilder
+            amazonDynamoDBClientBuilder = amazonDynamoDBClientBuilder
                     .withEndpointConfiguration(dynaliteContainer.getEndpointConfiguration())
                     .withCredentials(dynaliteContainer.getCredentials());
+        } else {
+            amazonDynamoDBClientBuilder = amazonDynamoDBClientBuilder
+                    .withRegion(Regions.US_EAST_1);
         }
 
         return amazonDynamoDBClientBuilder;
