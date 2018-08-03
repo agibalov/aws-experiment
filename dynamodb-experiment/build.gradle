@@ -14,7 +14,6 @@ dependencies {
     testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     testCompile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.379'
     testCompile group: 'org.testcontainers', name: 'testcontainers', version: '1.8.2'
-    testCompile group: 'org.testcontainers', name: 'dynalite', version: '1.8.2'
     testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.16.18'
 }
 

@@ -5,7 +5,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
-import org.testcontainers.dynamodb.DynaliteContainer;
 
 public class AmazonDynamoDBProvider implements TestRule {
     private DynaliteContainer dynaliteContainer;
