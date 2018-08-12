@@ -14,11 +14,11 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 
 public class DynaliteContainer extends ExternalResource {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynaliteContainer.class);
-    private final GenericContainer delegate;
+    private final GenericContainer container;
 
     @SneakyThrows
     public DynaliteContainer() {
-        this.delegate = new GenericContainer(new ImageFromDockerfile("my-dynalite")
+        this.container = new GenericContainer(new ImageFromDockerfile("my-dynalite")
                 .withDockerfileFromBuilder(dockerfileBuilder -> dockerfileBuilder
                         .from("node:10.8-alpine")
                         .run("npm install -g dynalite@2.0.0")
@@ -29,8 +29,8 @@ public class DynaliteContainer extends ExternalResource {
 
     public AwsClientBuilder.EndpointConfiguration getEndpointConfiguration() {
         return new AwsClientBuilder.EndpointConfiguration("http://" +
-                this.delegate.getContainerIpAddress() + ":" +
-                this.delegate.getMappedPort(4567), null);
+                this.container.getContainerIpAddress() + ":" +
+                this.container.getMappedPort(4567), null);
     }
 
     public AWSCredentialsProvider getCredentials() {
@@ -39,16 +39,11 @@ public class DynaliteContainer extends ExternalResource {
 
     @Override
     protected void before() {
-        try {
-            delegate.start();
-        } catch (Throwable t) {
-            t.printStackTrace();
-            throw t;
-        }
+        container.start();
     }
 
     @Override
     protected void after() {
-        delegate.stop();
+        container.stop();
     }
 }
