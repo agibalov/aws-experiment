@@ -15,17 +15,6 @@ public class DynaliteContainer extends ExternalResource {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynaliteContainer.class);
     private static GenericContainer container;
 
-    /*@SneakyThrows
-    public DynaliteContainer() {
-        this.container = new GenericContainer(new ImageFromDockerfile("my-dynalite")
-                .withDockerfileFromBuilder(dockerfileBuilder -> dockerfileBuilder
-                        .from("node:10.8-alpine")
-                        .run("npm install -g dynalite@2.0.0")
-                        .cmd("dynalite")))
-                .withExposedPorts(4567)
-                .withLogConsumer(new Slf4jLogConsumer(LOGGER));
-    }*/
-
     public AwsClientBuilder.EndpointConfiguration getEndpointConfiguration() {
         return new AwsClientBuilder.EndpointConfiguration("http://" +
                 this.container.getContainerIpAddress() + ":" +
