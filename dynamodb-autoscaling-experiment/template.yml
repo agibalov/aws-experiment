@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+  DummyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: dummy1
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  DummyTableWcuScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MinCapacity: 1
+      MaxCapacity: 100
+      ResourceId: !Sub "table/${DummyTable}"
+      RoleARN: !GetAtt AutoScaleRole.Arn
+      ScalableDimension: dynamodb:table:WriteCapacityUnits
+      ServiceNamespace: dynamodb
+
+  DummyTableWcuScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: AutoscaleNicely
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DummyTableWcuScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        # Desired percentage of provisioned capacity to consume
+        # (if set to 50% and consumption is 5, then it sets the provisioned capacity to 10)
+        TargetValue: 50
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+  AutoScaleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: application-autoscaling.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: UseDynamoAndCloudWatch
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeTable
+                  - dynamodb:UpdateTable
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:SetAlarmState
+                  - cloudwatch:DeleteAlarms
+                Resource: "*"
