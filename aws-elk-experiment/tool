@@ -3,8 +3,10 @@
 const { spawnSync } = require('child_process');
 
 const region = 'us-east-1';
-const stackName = 'ElkExperiment';
-const deploymentBucketName = 'elk-experiment-bucket';
+const cognitoStackName = 'ElkCognito';
+const demoStackName = 'ElkDemo';
+const deploymentBucketName = 'elk-experiment-bucket2';
+const cognitoDomainName = 'agibalov-domain-123';
 
 const yargs = require('yargs');
 const argv = yargs
@@ -16,29 +18,74 @@ const argv = yargs
         shell(`zip logstoelasticsearch.zip logstoelasticsearch.js`);
 
         shell(`aws s3 mb s3://${deploymentBucketName} --region ${region}`);
+
+        console.log(`Deploying Cognito stack...`);
         shell(`aws cloudformation package \
-            --template-file cf.yml \
+            --template-file cf-cognito.yml \
             --s3-bucket ${deploymentBucketName} \
             --output-template-file _packaged.yml`);
 
         shell(`aws cloudformation deploy \
             --template-file _packaged.yml \
-            --stack-name ${stackName} \
+            --stack-name ${cognitoStackName} \
             --capabilities CAPABILITY_IAM \
+            --region ${region}`);
+
+        console.log(`Creating user pool domain...`);
+        const userPoolId = getStackOutput(cognitoStackName, 'CognitoUserPoolId');
+        shell(`aws cognito-idp create-user-pool-domain \
+            --domain ${cognitoDomainName} \
+            --user-pool-id ${userPoolId} \
+            --region ${region}`);
+
+        console.log(`Deploying Demo stack...`);
+        const authenticatedUserElasticsearchAccessRoleArn = getStackOutput(
+            cognitoStackName, 'AuthenticatedUserElasticsearchAccessRoleArn');
+        shell(`aws cloudformation package \
+            --template-file cf-demo.yml \
+            --s3-bucket ${deploymentBucketName} \
+            --output-template-file _packaged.yml`);
+        shell(`aws cloudformation deploy \
+            --template-file _packaged.yml \
+            --stack-name ${demoStackName} \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+            AuthenticatedUserElasticsearchAccessRoleArn=${authenticatedUserElasticsearchAccessRoleArn} \
+            --region ${region}`);
+
+        console.log(`Enabling Cognito authentication for Elasticsearch...`);
+        const identityPoolId = getStackOutput(cognitoStackName, 'CognitoIdentityPoolId');
+        const domainName = getStackOutput(demoStackName, 'ElasticsearchDomainName');
+        const ElasticsearchCognitoAccessRoleArn = getStackOutput(demoStackName, 'ElasticsearchCognitoAccessRoleArn');
+
+        shell(`aws es update-elasticsearch-domain-config \
+            --domain-name ${domainName} \
+            --cognito-options \
+            Enabled=true,UserPoolId="${userPoolId}",IdentityPoolId="${identityPoolId}",RoleArn="${ElasticsearchCognitoAccessRoleArn}" \
             --region ${region}`);
     })
     .command('undeploy', 'Undeploy everything', () => {}, () => {
         console.log('Undeploying');
 
-        shell(`aws cloudformation delete-stack --stack-name ${stackName} --region ${region}`);
-        shell(`aws cloudformation wait stack-delete-complete --stack-name ${stackName} --region ${region}`);
+        shell(`aws cloudformation delete-stack --stack-name ${demoStackName} --region ${region}`);
+        shell(`aws cloudformation wait stack-delete-complete --stack-name ${demoStackName} --region ${region}`);
+
+        const userPoolId = getStackOutput(cognitoStackName, 'CognitoUserPoolId');
+        shell(`aws cognito-idp delete-user-pool-domain \
+            --domain ${cognitoDomainName} \
+            --user-pool-id ${userPoolId} \
+            --region ${region}`);
+
+        shell(`aws cloudformation delete-stack --stack-name ${cognitoStackName} --region ${region}`);
+        shell(`aws cloudformation wait stack-delete-complete --stack-name ${cognitoStackName} --region ${region}`);
+
         shell(`aws s3 rm s3://${deploymentBucketName} --recursive`);
         shell(`aws s3 rb s3://${deploymentBucketName} --force`);
     })
     .command('delete-old-indexes', 'Delete old indexes', () => {}, () => {
         console.log('Delete old indexes');
 
-        const esHost = getStackOutput('ElasticsearchEndpoint');
+        const esHost = getStackOutput(demoStackName, 'ElasticsearchEndpoint');
         const esHostWithPort = `${esHost}:443`;
 
         const awsAccessKeyId = getShellOutput('aws configure get aws_access_key_id --profile default');
@@ -67,7 +114,9 @@ function shell(command) {
     }
 
     if(result.status != 0) {
-        throw 'status != 0';
+        if(result.stdout && !result.stdout.contains(`No changes to deploy.`)) {
+            throw 'status != 0';
+        }
     }
 
     return result;
@@ -89,7 +138,7 @@ function getShellOutput(command) {
     return result.stdout.toString().trim();
 }
 
-function getStackOutput(outputKey) {
+function getStackOutput(stackName, outputKey) {
     return getShellOutput(`aws cloudformation describe-stacks \
             --stack-name ${stackName} \
             --query 'Stacks[0].Outputs[?OutputKey==\`'${outputKey}'\`].OutputValue' \

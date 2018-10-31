@@ -1,10 +1,18 @@
 AWSTemplateFormatVersion: 2010-09-09
 
+Parameters:
+  AuthenticatedUserElasticsearchAccessRoleArn:
+    Type: String
+
 Outputs:
   ElasticsearchEndpoint:
     Value: !GetAtt MyElasticsearchDomain.DomainEndpoint
   KibanaURL:
     Value: !Sub "https://${MyElasticsearchDomain.DomainEndpoint}/_plugin/kibana"
+  ElasticsearchDomainName:
+    Value: !Ref MyElasticsearchDomain
+  ElasticsearchCognitoAccessRoleArn:
+    Value: !GetAtt ElasticsearchCognitoAccessRole.Arn
 
 Resources:
   # App1
@@ -30,6 +38,19 @@ Resources:
             - logs:PutLogEvents
             - logs:DescribeLogStreams
             Resource: "*"
+
+  ElasticsearchCognitoAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: es.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonESCognitoAccess
 
   DummyLambdaFunction:
     Type: AWS::Lambda::Function
@@ -85,8 +106,7 @@ Resources:
         Statement:
           Effect: Allow
           Principal:
-            # AWS: "*" # allow unrestricted public access
-            AWS: !Ref AWS::AccountId # allow requests from one AWS account
+            AWS: !Ref AuthenticatedUserElasticsearchAccessRoleArn
           Action:
           - es:*
           Resource: "*"

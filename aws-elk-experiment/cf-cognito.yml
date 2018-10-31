@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  CognitoUserPoolId:
+    Value: !Ref CognitoUserPool
+  CognitoIdentityPoolId:
+    Value: !Ref CognitoIdentityPool
+  AuthenticatedUserElasticsearchAccessRoleArn:
+    Value: !GetAtt AuthenticatedUserElasticsearchAccessRole.Arn
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ElkCognitoUserPool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+          RequireUppercase: false
+      Schema:
+      - Name: email
+        Required: true
+      AutoVerifiedAttributes:
+      - email
+
+  TestUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      Username: aagibalov
+      UserAttributes:
+      - Name: email
+        Value: andrey.agibalov@gmail.com
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: ElkCognitoIdentityPool
+      AllowUnauthenticatedIdentities: false
+
+  IdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        authenticated: !GetAtt AuthenticatedUserElasticsearchAccessRole.Arn
+
+  AuthenticatedUserElasticsearchAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Federated: cognito-identity.amazonaws.com
+          Action: sts:AssumeRoleWithWebIdentity
+      Policies:
+      - PolicyName: ElasticsearchAccess
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action: es:ESHttp*
+            Resource: '*'
