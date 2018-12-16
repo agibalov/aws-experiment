@@ -1,0 +1,15 @@
+{
+    "dev": {
+        "app_function": "app.app",
+        "project_name": "zappa-experiment",
+        "keep_warm": false,
+        "runtime": "python3.6",
+        "s3_bucket": "zappa-qcumlo75c",
+        "aws_region": "us-east-1",
+        "extra_permissions": [{
+            "Effect": "Allow",
+            "Action": [ "comprehend:*" ],
+            "Resource": "*"
+        }]
+    }
+}

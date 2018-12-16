@@ -1,0 +1,65 @@
+<html ng-app="app">
+    <head>
+        <title>NER</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css">
+    </head>
+    <body ng-controller="AppController as app">
+        <section class="hero">
+            <div class="hero-body">
+                <div class="container">
+                    <h1 class="title">NER</h1>
+                    <h2 class="subtitle">Named Entity Recognition demo</h2>
+                </div>
+            </div>
+        </section>
+        <div class="container">
+            <div class="columns">
+                <div class="column">
+                    <textarea class="textarea" rows="15" ng-model="app.inputText"></textarea>
+                    <div class="buttons">
+                        <button class="button is-success" type="button"
+                                ng-click="app.onExtractClick()" ng-disabled="app.wip" ng-class="{'is-loading': app.wip}">Extract</button>
+                    </div>
+                </div>
+                <div class="column">
+                    <ul>
+                        <li ng-repeat="entity in app.entities"><span class="tag is-light">{{entity.type}}</span> {{entity.text}}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.5/angular.min.js"></script>
+        <script>
+            angular.module('app', [])
+                .controller('AppController', function($http) {
+                    var app = this;
+                    app.wip = false;
+                    app.inputText =
+"At 13, he enrolled in the Lakeside School, a private preparatory school and wrote his first software " +
+"program.When Gates was in the eighth grade, the Mothers' Club at the school used proceeds from Lakeside " +
+"School's rummage sale to buy a Teletype Model 33 ASR terminal and a block of computer time on a General " +
+"Electric (GE) computer for the school's students. Gates took an interest in programming the GE system " +
+"in BASIC, and was excused from math classes to pursue his interest. He wrote his first computer program " +
+"on this machine: an implementation of tic-tac-toe that allowed users to play games against the computer. " +
+"Gates was fascinated by the machine and how it would always execute software code perfectly. When he " +
+"reflected back on that moment, he said, \"There was just something neat about the machine.\" After the " +
+"Mothers Club donation was exhausted, he and other students sought time on systems including DEC PDP " +
+"minicomputers. One of these systems was a PDP-10 belonging to Computer Center Corporation (CCC), which " +
+"banned four Lakeside students – Gates, Paul Allen, Ric Weiland, and Kent Evans – for the summer after it " +
+"caught them exploiting bugs in the operating system to obtain free computer time.";
+                    app.entities = [];
+                    app.onExtractClick = function() {
+                        app.wip = true;
+                        $http.post(window.location.href.replace(/\/$/, '') + '/extract', {
+                            text: app.inputText
+                        }).then(function(result) {
+                            app.entities = result.data.entities;
+                        }).finally(function() {
+                            app.wip = false;
+                        });
+                    };
+                });
+        </script>
+    </body>
+</html>
