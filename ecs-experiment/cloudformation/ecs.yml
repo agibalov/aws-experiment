@@ -5,10 +5,6 @@ Outputs:
     Value: !Ref Vpc
     Export:
       Name: !Sub "${AWS::StackName}-Vpc"
-  AlbSecurityGroup:
-    Value: !Ref AlbSecurityGroup
-    Export:
-      Name: !Sub "${AWS::StackName}-AlbSecurityGroup"
   Az1PublicSubnet:
     Value: !Ref Az1PublicSubnet
     Export:
@@ -17,10 +13,30 @@ Outputs:
     Value: !Ref Az2PublicSubnet
     Export:
       Name: !Sub "${AWS::StackName}-Az2PublicSubnet"
-  EcsClusterName:
+  AlbSecurityGroup:
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-AlbSecurityGroup"
+  EcsSecurityGroup:
+    Value: !Ref EcsSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-EcsSecurityGroup"
+  EcsCluster:
     Value: !Ref EcsCluster
     Export:
-      Name: !Sub "${AWS::StackName}-EcsClusterName"
+      Name: !Sub "${AWS::StackName}-EcsCluster"
+  Ec2AppRepositoryName:
+    Value: !Ref Ec2AppRepository
+    Export:
+      Name: !Sub "${AWS::StackName}-Ec2AppRepositoryName"
+  Ec2AppRepositoryUrl:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Ec2AppRepository}"
+  FargateAppRepositoryName:
+    Value: !Ref FargateAppRepository
+    Export:
+      Name: !Sub "${AWS::StackName}-FargateAppRepositoryName"
+  FargateAppRepositoryUrl:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FargateAppRepository}"
 
 Resources:
   Vpc:
@@ -81,11 +97,6 @@ Resources:
       SubnetId: !Ref Az2PublicSubnet
       RouteTableId: !Ref RouteTable
 
-  EcsCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: MyEcsCluster
-
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -112,53 +123,53 @@ Resources:
           ToPort: 65535
           SourceSecurityGroupId: !Ref AlbSecurityGroup
 
-  EcsInstanceRole:
-    Type: AWS::IAM::Role
+  EcsCluster:
+    Type: AWS::ECS::Cluster
     Properties:
-      RoleName: MyEcsInstanceRole
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          Effect: Allow
-          Principal:
-            Service: ec2.amazonaws.com
-          Action: sts:AssumeRole
-      Path: /
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+      ClusterName: !Sub "${AWS::StackName}-EcsCluster"
 
-  EcsInstanceRoleInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
+  Ec2AppRepository:
+    Type: AWS::ECR::Repository
     Properties:
-      InstanceProfileName: MyEcsInstanceRoleInstanceProfile
-      Path: /
-      Roles:
-        - !Ref EcsInstanceRole
+      RepositoryName: ec2-app
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": [ "build" ],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
 
-  EcsInstanceLaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  FargateAppRepository:
+    Type: AWS::ECR::Repository
     Properties:
-      ImageId: ami-9eb4b1e5
-      InstanceType: t2.micro
-      AssociatePublicIpAddress: true
-      KeyName: !Ref AWS::NoValue
-      SecurityGroups:
-        - !Ref EcsSecurityGroup
-      IamInstanceProfile: !GetAtt EcsInstanceRoleInstanceProfile.Arn
-      UserData: !Base64
-        "Fn::Sub": |
-          #!/bin/bash
-          echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
-
-  EcsInstanceAutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      VPCZoneIdentifier: [ !Join [",", [ !Ref Az1PublicSubnet, !Ref Az2PublicSubnet ]] ]
-      LaunchConfigurationName: !Ref EcsInstanceLaunchConfiguration
-      MinSize: "1"
-      MaxSize: "1"
-      DesiredCapacity: "1"
-      Tags:
-        - Key: Name
-          Value: EcsInstanceAutoScalingGroup
-          PropagateAtLaunch: true
+      RepositoryName: fargate-app
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": [ "build" ],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
