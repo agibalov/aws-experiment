@@ -1,96 +1,103 @@
 #!/bin/bash
 
-region=us-east-1
-stackName=dummy-stack1
-deploymentBucketName=loki2302-deployment1
-websiteBucketName=loki2302-dummy-bucket1
+set -x
+
+Region=us-east-1
+StackName=dummy-stack1
+DeploymentBucketName=loki2302-deployment1
+WebsiteBucketName=loki2302-dummy-bucket1
 
 command=$1
 
 get_stack_output() {
-  stackName=$1
-  outputName=$2
+  local stackName=$1
+  local outputName=$2
   aws cloudformation describe-stacks \
     --stack-name ${stackName} \
     --query 'Stacks[0].Outputs[?OutputKey==`'${outputName}'`].OutputValue' \
     --output text \
-    --region ${region}
+    --region ${Region}
 }
 
-if [ "$command" == "" ]; then
+if [[ "$command" == "" ]]; then
   echo "No command specified"
-elif [ "$command" == "deploy" ]; then
+elif [[ "$command" == "deploy" ]]; then
   echo "DEPLOYING"
 
-  ./gradlew clean build
-  if [ $? != 0 ]; then
+  AWS_REGION=${Region} ./gradlew clean build
+  if [[ $? != 0 ]]; then
     echo "Build failed"
     exit 1
   fi
 
-  aws s3 mb s3://${deploymentBucketName} --region ${region}
+  aws s3 mb s3://${DeploymentBucketName} --region ${Region}
 
   aws cloudformation package \
     --template-file serverless.yml \
-    --s3-bucket ${deploymentBucketName} \
+    --s3-bucket ${DeploymentBucketName} \
     --output-template-file _packaged.yml
 
   aws cloudformation deploy \
     --template-file _packaged.yml \
-    --stack-name ${stackName} \
+    --stack-name ${StackName} \
     --capabilities CAPABILITY_IAM \
-    --region ${region} \
+    --region ${Region} \
     --parameter-overrides \
-    WebsiteBucketName=${websiteBucketName}
+    WebsiteBucketName=${WebsiteBucketName}
 
-  aws s3 sync public s3://${websiteBucketName}/ --delete --acl public-read
+  aws s3 sync public s3://${WebsiteBucketName}/ --delete --acl public-read
 
   # Create new API deployment manually - CloudFormation DOESN'T do it
-  restApiId=$(get_stack_output ${stackName} "RestApiId")
-  restApiStageName=$(get_stack_output ${stackName} "RestApiStageName")
+  restApiId=$(get_stack_output ${StackName} "RestApiId")
+  restApiStageName=$(get_stack_output ${StackName} "RestApiStageName")
   aws apigateway create-deployment \
     --rest-api-id ${restApiId} \
-    --stage-name ${restApiStageName}
+    --stage-name ${restApiStageName} \
+    --region ${Region}
 
-  websiteUrl=$(get_stack_output ${stackName} "WebsiteUrl")
-  restApiUrl=$(get_stack_output ${stackName} "RestApiUrl")
+  websiteUrl=$(get_stack_output ${StackName} "WebsiteUrl")
+  restApiUrl=$(get_stack_output ${StackName} "RestApiUrl")
   echo "Website URL: ${websiteUrl}"
   echo "REST API URL: ${restApiUrl}"
 
-  restApiKeyId=$(get_stack_output ${stackName} "RestApiKeyId")
-  restApiKey=$(aws apigateway get-api-key --api-key ${restApiKeyId} \
-    --output text --include-value --query 'value')
+  restApiKeyId=$(get_stack_output ${StackName} "RestApiKeyId")
+  restApiKey=$(aws apigateway get-api-key \
+    --api-key ${restApiKeyId} \
+    --output text \
+    --include-value \
+    --query 'value' \
+    --region ${Region})
   echo "API key: ${restApiKey}"
 
   jq -n \
     --arg apiUrl ${restApiUrl} \
     --arg apiKey ${restApiKey} \
     '{"apiUrl":$apiUrl,"apiKey":$apiKey}' > config.json
-  aws s3 cp config.json s3://${websiteBucketName}/ --acl public-read
+  aws s3 cp config.json s3://${WebsiteBucketName}/ --acl public-read
 
-  swaggerHost=${restApiId}.execute-api.${region}.amazonaws.com
+  swaggerHost=${restApiId}.execute-api.${Region}.amazonaws.com
   swaggerBasePath=/${restApiStageName}
   jq \
     --arg host "${swaggerHost}" \
     --arg basePath "${swaggerBasePath}" \
     '(.host = $host)|(.basePath = $basePath)' build/api.json > build/_api.json
-  aws s3 cp build/_api.json s3://${websiteBucketName}/docs/api.json --acl public-read
+  aws s3 cp build/_api.json s3://${WebsiteBucketName}/docs/api.json --acl public-read
 
-elif [ "$command" == "undeploy" ]; then
+elif [[ "$command" == "undeploy" ]]; then
   echo "UNDEPLOYING"
 
-  aws s3 rm s3://${websiteBucketName}/ --recursive
+  aws s3 rm s3://${WebsiteBucketName}/ --recursive
 
   aws cloudformation delete-stack \
-    --stack-name ${stackName} \
-    --region ${region}
+    --stack-name ${StackName} \
+    --region ${Region}
 
   aws cloudformation wait stack-delete-complete \
-    --stack-name ${stackName} \
-    --region ${region}
+    --stack-name ${StackName} \
+    --region ${Region}
 
-  aws s3 rm s3://${deploymentBucketName}/ --recursive
-  aws s3 rb s3://${deploymentBucketName} --force
+  aws s3 rm s3://${DeploymentBucketName}/ --recursive
+  aws s3 rb s3://${DeploymentBucketName} --force
 
 else
   echo "Unknown command '$command'"

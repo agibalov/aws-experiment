@@ -2,5 +2,12 @@
 
 The goal is to build a "serverless web app".
 
-* `./deploy.sh deploy` - deploy.
-* `./deploy.sh undeploy` - undeploy.
+## Prerequsities
+
+* AWS CLI
+* jq
+
+## How to deploy
+
+* `./tool.sh deploy` - deploy.
+* `./tool.sh undeploy` - undeploy.
