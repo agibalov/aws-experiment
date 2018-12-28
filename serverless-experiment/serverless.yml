@@ -174,8 +174,8 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          APP_MESSAGE_SUFFIX: !Sub "Website bucket name is ${WebsiteBucketName}"
-          APP_TODOS_TABLE_NAME: !Ref TodosTable
+          APP_MESSAGESUFFIX: !Sub "Website bucket name is ${WebsiteBucketName}"
+          APP_TODOSTABLENAME: !Ref TodosTable
 
   TodosTable:
     Type: AWS::DynamoDB::Table

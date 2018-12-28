@@ -15,14 +15,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Date;
 import java.util.UUID;
 
 @Configuration
 @EnableWebMvc
-@EnableConfigurationProperties
+@EnableConfigurationProperties({AppConfig.AppProperties.class})
 public class AppConfig {
     @Bean
     public AppProperties appProperties() {
@@ -30,7 +32,6 @@ public class AppConfig {
     }
 
     @Bean
-    @Autowired
     public DynamoDBTableMapper<TodoItem, String, ?> todoItemTableMapper(AppProperties appProperties) {
         AmazonDynamoDB amazonDynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
         DynamoDBMapperConfig dynamoDBMapperConfig = DynamoDBMapperConfig.builder()
@@ -40,6 +41,19 @@ public class AppConfig {
         DynamoDBTableMapper<TodoItem, String, ?> todoItemTableMapper =
                 dynamoDBMapper.newTableMapper(TodoItem.class);
         return todoItemTableMapper;
+    }
+
+    @Bean
+    public WebMvcConfigurer webMvcConfigurerAdapter() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry corsRegistry) {
+                corsRegistry.addMapping("/**")
+                        .allowedHeaders("*")
+                        .allowedMethods("*")
+                        .allowedOrigins("*");
+            }
+        };
     }
 
     @RestController

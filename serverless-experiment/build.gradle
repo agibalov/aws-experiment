@@ -9,17 +9,17 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    testCompile 'org.springframework.boot:spring-boot-starter-test:1.5.7.RELEASE'
-    testCompile group: 'io.springfox', name: 'springfox-swagger2', version: '2.7.0'
-    testCompile 'org.springframework.boot:spring-boot-starter-web:1.5.7.RELEASE'
+    testCompile 'org.springframework.boot:spring-boot-starter-test:2.1.1.RELEASE'
+    testCompile group: 'io.springfox', name: 'springfox-swagger2', version: '2.9.2'
+    testCompile 'org.springframework.boot:spring-boot-starter-web:2.1.1.RELEASE'
 
-    compile('org.springframework.boot:spring-boot-starter-web:1.5.7.RELEASE') {
+    compile('org.springframework.boot:spring-boot-starter-web:2.1.1.RELEASE') {
         exclude group: 'org.springframework.boot', module: 'spring-boot-starter-tomcat'
     }
-    compile 'io.swagger:swagger-annotations:1.5.13'
-    compile 'com.amazonaws.serverless:aws-serverless-java-container-spring:0.7'
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.210'
-    compileOnly 'org.projectlombok:lombok:1.16.18'
+    compile 'io.swagger:swagger-annotations:1.5.21'
+    compile 'com.amazonaws.serverless:aws-serverless-java-container-spring:1.3'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.475'
+    compileOnly 'org.projectlombok:lombok:1.18.4'
 }
 
 distributions {

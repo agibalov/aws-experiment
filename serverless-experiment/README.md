@@ -1,6 +1,6 @@
 # serverless-experiment
 
-The goal is to build a "serverless web app".
+A "serverless web app" that uses Spring Boot 2.1.1 and [aws-serverless-java-container 1.3](https://github.com/awslabs/aws-serverless-java-container).
 
 ## Prerequsities
 
