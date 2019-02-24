@@ -127,7 +127,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 81
+      Port: 80
       Protocol: HTTP
       DefaultActions:
         - Type: redirect
