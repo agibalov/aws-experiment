@@ -17,14 +17,9 @@ Parameters:
 
 Outputs:
   LoadBalancerUrl:
-    Value: !Sub "http://${LoadBalancer.DNSName}"
+    Value: !Sub "https://${LoadBalancer.DNSName}"
   CustomDomainNameUrl:
-    Condition: CreateCustomDomainName
-    Value: !Sub "http://${DomainPrefix}.${HostedZoneSuffix}"
-
-Conditions:
-  CreateCustomDomainName:
-    !Not [!Equals [!Ref HostedZoneId, '']]
+    Value: !Sub "https://${DomainPrefix}.${HostedZoneSuffix}"
 
 Mappings:
   ConstMap:
@@ -78,7 +73,8 @@ Resources:
   EcsService:
     Type: AWS::ECS::Service
     DependsOn:
-      - LoadBalancerListener
+      - LoadBalancerHttpListener
+      - LoadBalancerHttpsListener
     Properties:
       Cluster:
         Fn::ImportValue: !Sub "${EcsStackName}-EcsCluster"
@@ -127,19 +123,41 @@ Resources:
           Value: 10
       TargetType: ip
 
-  LoadBalancerListener:
+  LoadBalancerHttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
+      Port: 81
       Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Host: "#{host}"
+            Path: "/#{path}"
+            Port: 443
+            Protocol: HTTPS
+            Query: "#{query}"
+            StatusCode: HTTP_301
+
+  LoadBalancerHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref Certificate
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref LoadBalancerTargetGroup
 
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${DomainPrefix}.${HostedZoneSuffix}"
+
   EcsServiceRecordSet:
     Type: AWS::Route53::RecordSet
-    Condition: CreateCustomDomainName
     Properties:
       AliasTarget:
         DNSName: !GetAtt LoadBalancer.DNSName

@@ -136,7 +136,7 @@ elif [[ "${command}" == "deploy-fargate-app-with-dns" ]]; then
     ${fargateAppWithDnsRepositoryUrl} \
     "cloudformation/fargate-app-with-dns.yml" \
     "fargate-with-dns" \
-    ${FargateAppStackName}
+    ${FargateAppWithDnsStackName}
 
 elif [[ "${command}" == "undeploy-fargate-app-with-dns" ]]; then
   undeploy_stack ${FargateAppWithDnsStackName}
