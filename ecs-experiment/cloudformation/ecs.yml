@@ -38,7 +38,7 @@ Outputs:
   FargateAppRepositoryUrl:
     Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FargateAppRepository}"
   FargateAppWithDnsRepositoryName:
-    Value: !Ref FargateAppRepository
+    Value: !Ref FargateAppWithDnsRepository
     Export:
       Name: !Sub "${AWS::StackName}-FargateAppWithDnsRepositoryName"
   FargateAppWithDnsRepositoryUrl:

@@ -99,6 +99,9 @@ elif [[ "${command}" == "undeploy-ecs" ]]; then
   fargateAppRepositoryName=$(get_stack_output ${EcsStackName} "FargateAppRepositoryName")
   delete_ecr_images ${fargateAppRepositoryName}
 
+  fargateAppWithDnsRepositoryName=$(get_stack_output ${EcsStackName} "FargateAppWithDnsRepositoryName")
+  delete_ecr_images ${fargateAppWithDnsRepositoryName}
+
   undeploy_stack ${EcsStackName}
 
   aws s3 rm s3://${DeploymentBucketName} \
