@@ -7,6 +7,7 @@ DeploymentBucketName=random-bucket-name-1212121
 EcsStackName=ECS
 Ec2AppStackName=Ec2App
 FargateAppStackName=FargateApp
+FargateAppWithDnsStackName=FargateAppWithDns
 
 command=$1
 
@@ -128,6 +129,17 @@ elif [[ "${command}" == "deploy-fargate-app" ]]; then
 
 elif [[ "${command}" == "undeploy-fargate-app" ]]; then
   undeploy_stack ${FargateAppStackName}
+
+elif [[ "${command}" == "deploy-fargate-app-with-dns" ]]; then
+  fargateAppWithDnsRepositoryUrl=$(get_stack_output ${EcsStackName} "FargateAppWithDnsRepositoryUrl")
+  deploy_app \
+    ${fargateAppWithDnsRepositoryUrl} \
+    "cloudformation/fargate-app-with-dns.yml" \
+    "fargate-with-dns" \
+    ${FargateAppStackName}
+
+elif [[ "${command}" == "undeploy-fargate-app-with-dns" ]]; then
+  undeploy_stack ${FargateAppWithDnsStackName}
 
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"

@@ -37,6 +37,12 @@ Outputs:
       Name: !Sub "${AWS::StackName}-FargateAppRepositoryName"
   FargateAppRepositoryUrl:
     Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FargateAppRepository}"
+  FargateAppWithDnsRepositoryName:
+    Value: !Ref FargateAppRepository
+    Export:
+      Name: !Sub "${AWS::StackName}-FargateAppWithDnsRepositoryName"
+  FargateAppWithDnsRepositoryUrl:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FargateAppWithDnsRepository}"
 
 Resources:
   Vpc:
@@ -155,6 +161,29 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: fargate-app
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": [ "build" ],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  FargateAppWithDnsRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: fargate-app-with-dns
       LifecyclePolicy:
         LifecyclePolicyText: |
           {

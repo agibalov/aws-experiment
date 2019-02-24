@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EcsStackName:
+    Type: String
+  Image:
+    Type: String
+  HostedZoneId:
+    Type: String
+    Default: Z274QH73NTZR2J
+  HostedZoneSuffix:
+    Type: String
+    Default: agibalov.io
+  DomainPrefix:
+    Type: String
+    Default: ecs-experiment
+
+Outputs:
+  LoadBalancerUrl:
+    Value: !Sub "http://${LoadBalancer.DNSName}"
+  CustomDomainNameUrl:
+    Condition: CreateCustomDomainName
+    Value: !Sub "http://${DomainPrefix}.${HostedZoneSuffix}"
+
+Conditions:
+  CreateCustomDomainName:
+    !Not [!Equals [!Ref HostedZoneId, '']]
+
+Mappings:
+  ConstMap:
+    singleton:
+      AppContainerName: AppContainer
+      AppContainerPort: 8080
+
+Resources:
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-AppLogGroup"
+      RetentionInDays: 1
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '1024'
+      Memory: '2GB'
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      Family: fargate-app
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: !FindInMap [ "ConstMap", "singleton", "AppContainerName" ]
+          Memory: 512
+          PortMappings:
+            - ContainerPort: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Image: !Ref Image
+
+  EcsService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - LoadBalancerListener
+    Properties:
+      Cluster:
+        Fn::ImportValue: !Sub "${EcsStackName}-EcsCluster"
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub "${EcsStackName}-EcsSecurityGroup"
+          Subnets:
+            - Fn::ImportValue: !Sub "${EcsStackName}-Az1PublicSubnet"
+            - Fn::ImportValue: !Sub "${EcsStackName}-Az2PublicSubnet"
+      LoadBalancers:
+        - ContainerName: !FindInMap [ "ConstMap", "singleton", "AppContainerName" ]
+          ContainerPort: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-LoadBalancer"
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${EcsStackName}-AlbSecurityGroup"
+      Subnets:
+        - Fn::ImportValue: !Sub "${EcsStackName}-Az1PublicSubnet"
+        - Fn::ImportValue: !Sub "${EcsStackName}-Az2PublicSubnet"
+      Scheme: internet-facing
+
+  LoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-TargetGroup"
+      VpcId:
+        Fn::ImportValue: !Sub "${EcsStackName}-Vpc"
+      Port: 80
+      Protocol: HTTP
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 10
+      TargetType: ip
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  EcsServiceRecordSet:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateCustomDomainName
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub "${DomainPrefix}.${HostedZoneSuffix}."
+      Type: A
