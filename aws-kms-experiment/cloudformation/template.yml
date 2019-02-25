@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  KmsKeyId:
+    Value: !Ref KmsKey
+  UserAAccessKeyId:
+    Value: !Ref UserAAccessKey
+  UserASecretAccessKey:
+    Value: !GetAtt UserAAccessKey.SecretAccessKey
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  KmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Allow everything to root
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Effect: Allow
+            Action: kms:*
+            Resource: "*"
+          - Sid: Allow decrypt to UserA
+            Principal:
+              AWS: !GetAtt UserA.Arn
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: "*"
+
+  UserA:
+    Type: AWS::IAM::User
+
+  UserAAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref UserA

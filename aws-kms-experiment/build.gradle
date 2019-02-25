@@ -1,0 +1,19 @@
+plugins {
+    id 'java'
+}
+
+group 'io.agibalov'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-cloudformation', version: '1.11.505'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-kms', version: '1.11.505'
+    compile group: 'commons-codec', name: 'commons-codec', version: '1.12'
+}
