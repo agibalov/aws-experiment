@@ -3,15 +3,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Outputs:
   KmsKeyId:
     Value: !Ref KmsKey
+  KmsKeyAlias:
+    Value: !Ref KmsKeyAlias
   UserAAccessKeyId:
     Value: !Ref UserAAccessKey
   UserASecretAccessKey:
     Value: !GetAtt UserAAccessKey.SecretAccessKey
 
 Resources:
-  Bucket:
-    Type: AWS::S3::Bucket
-
   KmsKey:
     Type: AWS::KMS::Key
     Properties:
@@ -31,6 +30,12 @@ Resources:
             Action:
               - kms:Decrypt
             Resource: "*"
+
+  KmsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/mykey
+      TargetKeyId: !Ref KmsKey
 
   UserA:
     Type: AWS::IAM::User

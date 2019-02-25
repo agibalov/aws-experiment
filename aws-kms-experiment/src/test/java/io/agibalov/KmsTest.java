@@ -22,14 +22,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class KmsTest {
+    private final static Regions REGION = Regions.US_EAST_1;
+    private final String STACK_NAME = "kms";
+
     @Test
     public void rootCanEncryptAndDecryptAndUserACanOnlyDecrypt() {
         AmazonCloudFormation amazonCloudFormationClient = AmazonCloudFormationClientBuilder.standard()
-                .withRegion(Regions.US_EAST_1)
+                .withRegion(REGION)
                 .build();
 
         DescribeStacksResult describeStacksResult = amazonCloudFormationClient.describeStacks(
-                new DescribeStacksRequest().withStackName("kms"));
+                new DescribeStacksRequest().withStackName(STACK_NAME));
         Stack stack = describeStacksResult.getStacks().get(0);
         Map<String, String> stackOutputs = stack.getOutputs().stream()
                 .collect(Collectors.toMap(o -> o.getOutputKey(), o -> o.getOutputValue()));
@@ -37,7 +40,7 @@ public class KmsTest {
         String kmsKeyId = stackOutputs.get("KmsKeyId");
 
         AWSKMS awskms = AWSKMSClientBuilder.standard()
-                .withRegion(Regions.US_EAST_1)
+                .withRegion(REGION)
                 .build();
         EncryptResult encryptResult = awskms.encrypt(new EncryptRequest()
                 .withKeyId(kmsKeyId)
@@ -71,5 +74,34 @@ public class KmsTest {
                 .withCiphertextBlob(cipherTextBlob));
         assertEquals("hello world!",
                 new String(userADecryptResult.getPlaintext().array(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void canUseKeyAlias() {
+        AmazonCloudFormation amazonCloudFormationClient = AmazonCloudFormationClientBuilder.standard()
+                .withRegion(REGION)
+                .build();
+
+        DescribeStacksResult describeStacksResult = amazonCloudFormationClient.describeStacks(
+                new DescribeStacksRequest().withStackName(STACK_NAME));
+        Stack stack = describeStacksResult.getStacks().get(0);
+        Map<String, String> stackOutputs = stack.getOutputs().stream()
+                .collect(Collectors.toMap(o -> o.getOutputKey(), o -> o.getOutputValue()));
+
+        String kmsKeyAlias = stackOutputs.get("KmsKeyAlias");
+
+        AWSKMS awskms = AWSKMSClientBuilder.standard()
+                .withRegion(REGION)
+                .build();
+        EncryptResult encryptResult = awskms.encrypt(new EncryptRequest()
+                .withKeyId(kmsKeyAlias) // using key alias instead of key ID
+                .withPlaintext(ByteBuffer.wrap("hello world!".getBytes(StandardCharsets.UTF_8))));
+
+        ByteBuffer cipherTextBlob = encryptResult.getCiphertextBlob();
+
+        DecryptResult decryptResult = awskms.decrypt(new DecryptRequest()
+                .withCiphertextBlob(cipherTextBlob));
+        assertEquals("hello world!",
+                new String(decryptResult.getPlaintext().array(), StandardCharsets.UTF_8));
     }
 }
