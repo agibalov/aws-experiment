@@ -3,7 +3,6 @@
 set -x
 
 Region=us-east-1
-DeploymentBucketName=random-bucket-name-22312
 StackName=kms
 
 command=$1
@@ -22,13 +21,6 @@ elif [[ "${command}" == "undeploy" ]]; then
 
   aws cloudformation wait stack-delete-complete \
     --stack-name ${StackName} \
-    --region ${Region}
-
-  aws s3 rm s3://${DeploymentBucketName} \
-    --recursive \
-    --region ${Region}
-
-  aws s3 rb s3://${DeploymentBucketName} \
     --region ${Region}
 
 elif [[ "${command}" == "" ]]; then
