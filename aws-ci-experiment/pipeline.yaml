@@ -3,10 +3,10 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   DummyGitHubOwnerName:
     Type: String
-    Default: loki2302
+    Default: agibalov
   DummyGitHubRepositoryName:
     Type: String
-    Default: aws-ci-experiment
+    Default: aws-experiment
   DummyGitHubOAuthToken:
     Type: String
     Description: Should have "repo" and "admin:repo_hook" scopes
