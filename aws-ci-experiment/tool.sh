@@ -48,10 +48,12 @@ elif [ "$command" == "update" ]; then
       ParameterKey=DummyGitHubOAuthToken,ParameterValue=$gitHubOAuthToken \
       ParameterKey=AppS3BucketName,ParameterValue=$appS3BucketName \
       ParameterKey=DummyCodePipelinePipelineS3BucketName,ParameterValue=$dummyCodePipelinePipelineS3BucketName \
-      --capabilities CAPABILITY_NAMED_IAM
+      --capabilities CAPABILITY_NAMED_IAM \
+      --region $region
 
     aws cloudformation wait stack-update-complete \
-      --stack-name $stackName
+      --stack-name $stackName \
+      --region $region
   fi
 
 elif [ "$command" == "delete" ]; then

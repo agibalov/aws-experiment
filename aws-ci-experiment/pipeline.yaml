@@ -161,6 +161,7 @@ Resources:
         Type: LINUX_CONTAINER
       Source:
         Type: CODEPIPELINE
+        BuildSpec: aws-ci-experiment/buildspec.yml
       TimeoutInMinutes: 5
 
   DummyCodePipelinePipeline:
@@ -205,7 +206,7 @@ Resources:
                 Capabilities: CAPABILITY_NAMED_IAM
                 RoleArn: !GetAtt DummyCloudFormationRole.Arn
                 StackName: !Sub "${AWS::StackName}"
-                TemplatePath: SourceOutputArtifact::pipeline.yaml
+                TemplatePath: SourceOutputArtifact::aws-ci-experiment/pipeline.yaml
                 ParameterOverrides: !Sub |
                   {
                     "DummyGitHubOAuthToken": "${DummyGitHubOAuthToken}",
