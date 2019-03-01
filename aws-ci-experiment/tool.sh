@@ -86,6 +86,11 @@ elif [[ "${command}" == "start-pipeline" ]]; then
     --region ${Region}
 
 elif [[ "${command}" == "deploy-app" ]]; then
+  buildArtifactsDirectory=$3
+  if [[ "${buildArtifactsDirectory}" == "" ]]; then
+    buildArtifactsDirectory=.
+  fi
+
   aws cloudformation deploy \
     --template-file app.yml \
     --stack-name ${AppStackName} \
@@ -94,7 +99,14 @@ elif [[ "${command}" == "deploy-app" ]]; then
     EnvTag=${envTag} \
     --region ${Region}
 
+  webSiteBucketName=$(get_stack_output ${AppStackName} "WebSiteBucketName")
+  aws s3 cp ${buildArtifactsDirectory}/index.html s3://${webSiteBucketName} \
+    --acl public-read
+
 elif [[ "${command}" == "undeploy-app" ]]; then
+  webSiteBucketName=$(get_stack_output ${AppStackName} "WebSiteBucketName")
+  aws s3 rm s3://${webSiteBucketName}/ --recursive
+
   undeploy_stack ${AppStackName}
 
 elif [[ "${command}" == "" ]]; then

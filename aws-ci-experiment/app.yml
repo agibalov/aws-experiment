@@ -7,9 +7,13 @@ Parameters:
 Outputs:
   WebSiteBucketName:
     Value: !Ref WebSiteBucket
+  WebSiteURL:
+    Value: !GetAtt WebSiteBucket.WebsiteURL
 
 Resources:
   WebSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "${EnvTag}-7498770b4dae"
+      WebsiteConfiguration:
+        IndexDocument: index.html

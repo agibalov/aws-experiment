@@ -7,7 +7,7 @@ env:
 phases:
   build:
     commands:
-      - echo "${GREETING} `date`!!!" > index.html
+      - ./build.sh
 
 artifacts:
   files:
