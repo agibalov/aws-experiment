@@ -1,0 +1,219 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  EnvTag:
+    Type: String
+  GitHubRepositoryOwnerName:
+    Type: String
+  GitHubRepositoryName:
+    Type: String
+  GitHubRepositoryBranchName:
+    Type: String
+  GitHubRepositoryOAuthToken:
+    Type: String
+
+Outputs:
+  PipelineName:
+    Value: !Ref Pipeline
+  PipelineArtifactStoreBucketName:
+    Value: !Ref PipelineArtifactStoreBucket
+
+Resources:
+  PipelineArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvTag}-7498770b4dae-artifacts"
+
+  ArtifactStoreReadWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:GetObjectVersioning
+              - s3:PutObject
+            Resource: !Sub "${PipelineArtifactStoreBucket.Arn}/*"
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowStartProjectBuilds
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: !GetAtt BuildAppProject.Arn
+      ManagedPolicyArns:
+        - !Ref ArtifactStoreReadWritePolicy
+
+  BuildAppProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt BuildAppProjectLogGroup.Arn
+      ManagedPolicyArns:
+        - !Ref ArtifactStoreReadWritePolicy
+
+  BuildAppProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${EnvTag}-build-app-project"
+      ServiceRole: !GetAtt BuildAppProjectServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        EnvironmentVariables:
+          - Name: APP_S3_BUCKET_NAME
+            Value: hellothere
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ubuntu-base:14.04
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: aws-ci-experiment/build.yml
+      TimeoutInMinutes: 5
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref BuildAppProjectLogGroup
+
+  BuildAppProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${EnvTag}-build-app-project"
+      RetentionInDays: 1
+
+  DeployAppProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt DeployAppProjectLogGroup.Arn
+      ManagedPolicyArns:
+        - !Ref ArtifactStoreReadWritePolicy
+
+  DeployAppProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${EnvTag}-deploy-app-project"
+      ServiceRole: !GetAtt DeployAppProjectServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        EnvironmentVariables:
+          - Name: APP_S3_BUCKET_NAME
+            Value: hellothere
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ubuntu-base:14.04
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: aws-ci-experiment/deploy.yml
+      TimeoutInMinutes: 5
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref DeployAppProjectLogGroup
+
+  DeployAppProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${EnvTag}-deploy-app-project"
+      RetentionInDays: 1
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${EnvTag}-pipeline"
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineArtifactStoreBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GetSourceFromGitHub
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configuration:
+                Owner: !Ref GitHubRepositoryOwnerName
+                Repo: !Ref GitHubRepositoryName
+                Branch: !Ref GitHubRepositoryBranchName
+                OAuthToken: !Ref GitHubRepositoryOAuthToken
+              OutputArtifacts:
+                - Name: SourceCodeArtifact
+        - Name: Build
+          Actions:
+            - Name: BuildAppAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceCodeArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ProjectName: !Ref BuildAppProject
+        - Name: Deploy
+          Actions:
+            - Name: DeployAppAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ProjectName: !Ref DeployAppProject

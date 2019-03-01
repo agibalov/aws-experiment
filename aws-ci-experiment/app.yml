@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  EnvTag:
+    Type: String
+
+Outputs:
+  WebSiteBucketName:
+    Value: !Ref WebSiteBucket
+
+Resources:
+  WebSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvTag}-7498770b4dae"

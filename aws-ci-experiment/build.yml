@@ -1,0 +1,15 @@
+version: 0.2
+
+env:
+  variables:
+    GREETING: hello world!
+
+phases:
+  build:
+    commands:
+      - echo "${GREETING} `date`!!!" > index.html
+
+artifacts:
+  files:
+    - index.html
+  discard-paths: yes
