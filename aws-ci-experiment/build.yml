@@ -12,8 +12,9 @@ phases:
       - pwd
       - ls -la .
       - ./build.sh
+      - ls -la .
 
 artifacts:
   files:
-    - index.html
+    - aws-ci-experiment/index.html
   discard-paths: yes
