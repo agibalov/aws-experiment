@@ -57,7 +57,9 @@ Resources:
                 Action:
                   - codebuild:BatchGetBuilds
                   - codebuild:StartBuild
-                Resource: !GetAtt BuildAppProject.Arn
+                Resource:
+                  - !GetAtt BuildAppProject.Arn
+                  - !GetAtt DeployAppProject.Arn
       ManagedPolicyArns:
         - !Ref ArtifactStoreReadWritePolicy
 
@@ -178,7 +180,7 @@ Resources:
       Stages:
         - Name: Source
           Actions:
-            - Name: GetSourceFromGitHub
+            - Name: GetSourceFromGitHubAction
               ActionTypeId:
                 Category: Source
                 Owner: ThirdParty
@@ -214,6 +216,8 @@ Resources:
                 Version: 1
                 Provider: CodeBuild
               InputArtifacts:
+                - Name: SourceCodeArtifact
                 - Name: BuildArtifact
               Configuration:
                 ProjectName: !Ref DeployAppProject
+                PrimarySource: SourceCodeArtifact
