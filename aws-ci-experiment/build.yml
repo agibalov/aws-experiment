@@ -9,10 +9,7 @@ phases:
     commands:
       - cd aws-ci-experiment
       - chmod +x ./build.sh
-      - pwd
-      - ls -la .
       - ./build.sh
-      - ls -la .
 
 artifacts:
   files:

@@ -7,7 +7,7 @@ Parameters:
 Outputs:
   WebSiteBucketName:
     Value: !Ref WebSiteBucket
-  WebSiteURL:
+  WebSiteUrl:
     Value: !GetAtt WebSiteBucket.WebsiteURL
 
 Resources:

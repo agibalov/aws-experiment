@@ -5,6 +5,4 @@ phases:
     commands:
       - cd aws-ci-experiment
       - chmod +x ./tool.sh
-      - pwd
-      - ls -la .
       - ./tool.sh deploy-app ${ENV_TAG} ${CODEBUILD_SRC_DIR_BuildArtifact}
