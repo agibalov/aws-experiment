@@ -50,14 +50,14 @@ if [[ "${command}" == "deploy-pipeline" ]]; then
   gitHubRepositoryOwner=$3
   gitHubRepositoryName=$4
   gitHubRepositoryBranchName=$5
-  gitHubRepositoryOAuthToken=$6
+  gitHubOAuthToken=$6
 
-  if [[ "${gitHubRepositoryOAuthToken}" == "" ]]; then
-    gitHubRepositoryOAuthToken=$(get_stack_parameter ${PipelineStackName} "GitHubRepositoryOAuthToken")
+  if [[ "${gitHubOAuthToken}" == "" ]]; then
+    gitHubOAuthToken=$(get_stack_parameter ${PipelineStackName} "GitHubOAuthToken")
   fi
 
-  if [[ "${gitHubRepositoryOAuthToken}" == "" ]]; then
-    echo "gitHubRepositoryOAuthToken is not set"
+  if [[ "${gitHubOAuthToken}" == "" ]]; then
+    echo "gitHubOAuthToken is not set"
     exit 1
   fi
 
@@ -70,7 +70,7 @@ if [[ "${command}" == "deploy-pipeline" ]]; then
     GitHubRepositoryOwnerName=${gitHubRepositoryOwner} \
     GitHubRepositoryName=${gitHubRepositoryName} \
     GitHubRepositoryBranchName=${gitHubRepositoryBranchName} \
-    GitHubRepositoryOAuthToken=${gitHubRepositoryOAuthToken} \
+    GitHubOAuthToken=${gitHubOAuthToken} \
     --region ${Region}
 
 elif [[ "${command}" == "undeploy-pipeline" ]]; then

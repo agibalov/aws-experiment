@@ -9,7 +9,7 @@ Parameters:
     Type: String
   GitHubRepositoryBranchName:
     Type: String
-  GitHubRepositoryOAuthToken:
+  GitHubOAuthToken:
     Type: String
 
 Outputs:
@@ -205,7 +205,7 @@ Resources:
                 Owner: !Ref GitHubRepositoryOwnerName
                 Repo: !Ref GitHubRepositoryName
                 Branch: !Ref GitHubRepositoryBranchName
-                OAuthToken: !Ref GitHubRepositoryOAuthToken
+                OAuthToken: !Ref GitHubOAuthToken
               OutputArtifacts:
                 - Name: SourceCodeArtifact
         - Name: Build
