@@ -8,6 +8,8 @@ phases:
   build:
     commands:
       - cd aws-ci-experiment
+      - pwd
+      - ls -la .
       - ./build.sh
 
 artifacts:

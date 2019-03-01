@@ -4,5 +4,4 @@ phases:
   build:
     commands:
       - cd aws-ci-experiment
-      - ls -la .
       - ./tool.sh deploy-app ${ENV_TAG} ${CODEBUILD_SRC_DIR_BuildArtifact}
