@@ -3,5 +3,8 @@ version: 0.2
 phases:
   build:
     commands:
-      - ls -la
+      - echo "CODEBUILD_SRC_DIR is ${CODEBUILD_SRC_DIR}"
+      - ls -la ${CODEBUILD_SRC_DIR}
+      - echo "CODEBUILD_SRC_DIR_BuildArtifact is ${CODEBUILD_SRC_DIR_BuildArtifact}"
+      - ls -la ${CODEBUILD_SRC_DIR_BuildArtifact}
       - echo "I am the deployment!"
