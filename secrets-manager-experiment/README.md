@@ -1,8 +1,8 @@
 # secrets-manager-experiment
 
-* Deploy: `./tool.sh deploy-secrets-manager-experiment`
-* Undeploy: `./tool.sh undeploy-secrets-manager-experiment`
-* Test: `./tool.sh test-secrets-manager-experiment`
+* Deploy: `./tool.sh deploy`
+* Undeploy: `./tool.sh undeploy`
+* Test: `./tool.sh test`
 
 ## Notes
 
