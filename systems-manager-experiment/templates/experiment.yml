@@ -1,0 +1,63 @@
+Outputs:
+  TestFunctionName:
+    Value: !Ref TestFunction
+
+  Username:
+    Value: !Sub "{{resolve:ssm:${UsernameParameter}:1}}"
+
+  #Password: # DOES NOT WORK
+  #  Value: "{{resolve:ssm-secure:ThePassword:1}}"
+
+Resources:
+  TestFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSsmGetParameterForThePassword
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ThePassword"
+
+  TestFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TestFunctionRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const ssm = new AWS.SSM();
+          exports.handler = (event, context, callback) => {
+            ssm.getParameter({
+              Name: 'ThePassword',
+              WithDecryption: true
+            }, function(err, data) {
+              if(err) {
+                callback(err);
+                return;
+              }
+              callback(null, `username: ${process.env.USERNAME}, password: ${data.Parameter.Value}`);
+            });
+          };
+      Runtime: nodejs8.10
+      Timeout: 60
+      Environment:
+        Variables:
+          USERNAME: !Sub "{{resolve:ssm:${UsernameParameter}:1}}" # WORKS
+          #PASSWORD: "{{resolve:ssm-secure:ThePassword:1}}" # DOES NOT WORK
+
+  UsernameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String # CF doesn't support SecureString
+      Value: dummy-user
