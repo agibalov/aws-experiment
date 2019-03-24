@@ -3,7 +3,7 @@
 set -x
 
 Region=us-east-1
-SecretsManagegerExperimentStackName=secrets-manager
+StackName=secrets-manager-experiment
 
 command=$1
 
@@ -28,28 +28,18 @@ get_stack_output() {
     --region ${Region}
 }
 
-get_stack_parameter() {
-  local stackName=$1
-  local parameterName=$2
-  aws cloudformation describe-stacks \
-    --stack-name ${stackName} \
-    --query 'Stacks[0].Parameters[?ParameterKey==`'${parameterName}'`].ParameterValue' \
-    --output text \
-    --region ${Region}
-}
-
-if [[ "${command}" == "deploy-secrets-manager-experiment" ]]; then
+if [[ "${command}" == "deploy" ]]; then
   aws cloudformation deploy \
-    --template-file templates/secrets-manager-experiment.yml \
-    --stack-name ${SecretsManagegerExperimentStackName} \
+    --template-file templates/experiment.yml \
+    --stack-name ${StackName} \
     --capabilities CAPABILITY_NAMED_IAM \
     --region ${Region}
 
-elif [[ "${command}" == "undeploy-secrets-manager-experiment" ]]; then
-  undeploy_stack ${SecretsManagegerExperimentStackName}
+elif [[ "${command}" == "undeploy" ]]; then
+  undeploy_stack ${StackName}
 
-elif [[ "${command}" == "test-secrets-manager-experiment" ]]; then
-  testFunctionName=$(get_stack_output ${SecretsManagegerExperimentStackName} "TestFunctionName")
+elif [[ "${command}" == "test" ]]; then
+  testFunctionName=$(get_stack_output ${StackName} "TestFunctionName")
   aws lambda invoke \
     --function-name ${testFunctionName} \
     1.txt \
