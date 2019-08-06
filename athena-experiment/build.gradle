@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group 'io.agibalov'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk', version: '1.11.603'
+    testCompile group: 'org.jooq', name: 'jooq', version: '3.11.11'
+}
+
+test {
+    testLogging.showStandardStreams = true
+}
