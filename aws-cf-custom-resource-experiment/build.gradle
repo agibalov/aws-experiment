@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+group 'io.agibalov'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'com.amazonaws', name: 'aws-lambda-java-core', version: '1.2.0'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.613'
+    compile group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.1.0'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.9.3'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.8'
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.8'
+}
+
+task buildZip(type: Zip) {
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.runtime
+    }
+}

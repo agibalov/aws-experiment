@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  BucketFileResourceServiceToken:
+    Type: String
+
+Outputs:
+  OneTxtContentLength:
+    Value: !GetAtt OneTxtBucketFile.ContentLength
+  TwoTxtContentLength:
+    Value: !GetAtt TwoTxtBucketFile.ContentLength
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  OneTxtBucketFile:
+    Type: Custom::BucketFile
+    Properties:
+      ServiceToken: !Ref BucketFileResourceServiceToken
+      BucketName: !Ref Bucket
+      Key: 1.txt
+      Content: !Sub "hello world! AWS region is ${AWS::Region}"
+
+  TwoTxtBucketFile:
+    Type: Custom::BucketFile
+    Properties:
+      ServiceToken: !Ref BucketFileResourceServiceToken
+      BucketName: !Ref Bucket
+      Key: 2.txt
+      Content: qwerty

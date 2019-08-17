@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  BucketFileResourceServiceToken:
+    Value: !GetAtt LambdaFunction.Arn
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunction}"
+      RetentionInDays: 1
+
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+        - PolicyName: FullS3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: "*"
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: io.agibalov.BucketFileResourceHandler::handleRequest
+      Role: !GetAtt Role.Arn
+      Code: ../build/distributions/cf-custom-resource-lambda-1.0-SNAPSHOT.zip
+      Runtime: java8
+      Timeout: 60
+      MemorySize: 256
