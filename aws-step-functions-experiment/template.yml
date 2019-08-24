@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  StateMachineArn:
+    Value: !Ref StateMachine
+
+Resources:
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: StateMachineRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+              - !Sub "states.${AWS::Region}.amazonaws.com"
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CallLambdaFunctionsPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: "*"
+        - PolicyName: PublishToSnsPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action: sns:Publish
+              Resource: "*"
+
+  StateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |-
+        {
+          "StartAt": "AddAAndB",
+          "States": {
+            "AddAAndB": {
+              "Type": "Task",
+              "Resource": "${CalculatorLambdaFunction.Arn}",
+              "Parameters": {
+                "x.$": "$.a",
+                "y.$": "$.b",
+                "operation": "add"
+              },
+              "ResultPath": "$.aAndB",
+              "Next": "MultiplyByA"
+            },
+            "MultiplyByA": {
+              "Type": "Task",
+              "Resource": "${CalculatorLambdaFunction.Arn}",
+              "Parameters": {
+                "x.$": "$.aAndB.result",
+                "y.$": "$.a",
+                "operation": "mul"
+              },
+              "Next": "SendToSnsTopic"
+            },
+            "SendToSnsTopic": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "${DummySnsTopic}",
+                "Message.$": "$"
+              },
+              "ResultPath": "$.snsPublishResult",
+              "End": true
+            }
+          }
+        }
+
+  CalculatorLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt CalculatorLambdaFunctionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = (event, context, callback) => {
+            const operation = event.operation;
+            const x = parseInt(event.x, 10);
+            const y = parseInt(event.y, 10);
+            if (operation === 'add') {
+              callback(null, { result: x + y });
+            } else if (operation === 'mul') {
+              callback(null, { result: x * y });
+            } else {
+              callback(new Error('unknown operation'));
+            }
+          };
+      Runtime: nodejs8.10
+      Timeout: 10
+
+  CalculatorLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - logs:DescribeLogStreams
+              Resource: "*"
+
+  CalculatorLambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CalculatorLambdaFunction}"
+      RetentionInDays: 1
+
+  DummySnsTopic:
+    Type: AWS::SNS::Topic
