@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  DbName:
+    Type: String
+    Default: mydb1
+  MasterUsername:
+    Type: String
+    Default: masteruser
+  MasterUserPassword:
+    Type: String
+    Default: masteruserpassw0rD
+
+Outputs:
+  EndpointAddress:
+    Value: !GetAtt RedshiftCluster.Endpoint.Address
+  EndpointPort:
+    Value: !GetAtt RedshiftCluster.Endpoint.Port
+  DbName:
+    Value: !Ref DbName
+  MasterUsername:
+    Value: !Ref MasterUsername
+  MasterUserPassword:
+    Value: !Ref MasterUserPassword
+  BucketName:
+    Value: !Ref Bucket
+  RoleArn:
+    Value: !GetAtt RedshiftRole.Arn
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  RedshiftRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: redshift.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FullS3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action: s3:*
+              Resource: "*"
+
+  RedshiftCluster:
+    Type: AWS::Redshift::Cluster
+    Properties:
+      ClusterType: single-node
+      DBName: !Ref DbName
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      NodeType: dc2.large
+      PubliclyAccessible: true
+      ClusterSubnetGroupName: !Ref RedshiftSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedshiftSecurityGroup
+      IamRoles:
+        - !GetAtt RedshiftRole.Arn
+
+  RedshiftSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: RedshiftSubnetGroup
+      SubnetIds:
+        - !Ref PublicSubnet1
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.1.0.0/24
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref RouteTable
+
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Opens 3306 for the Internet
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5439
+          ToPort: 5439
+          CidrIp: 0.0.0.0/0
