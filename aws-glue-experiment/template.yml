@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  RdsDbName:
+    Type: String
+    Default: db1
+  RdsUsername:
+    Type: String
+    Default: masteruser
+  RdsPassword:
+    Type: String
+    Default: masterpassword
+
+Outputs:
+  BucketName:
+    Value: !Ref Bucket
+  ExportRdsToS3JobName:
+    Value: !Ref ExportRdsToS3Job
+  RdsHost:
+    Value: !GetAtt RdsInstance.Endpoint.Address
+  RdsPort:
+    Value: !GetAtt RdsInstance.Endpoint.Port
+  RdsDb:
+    Value: !Ref RdsDbName
+  RdsUsername:
+    Value: !Ref RdsUsername
+  RdsPassword:
+    Value: !Ref RdsPassword
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  Database:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: glue-experiment-db
+
+  RdsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref Database
+      TableInput:
+        Name: !Sub "${RdsDbName}.salaries"
+        Parameters:
+          classification: mysql
+          connectionName: !Ref Connection
+        StorageDescriptor:
+          Columns:
+            - Name: id
+              Type: string
+            - Name: salary
+              Type: int
+          Location: !Sub "${RdsDbName}.salaries"
+
+  GlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.us-east-1.s3
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref RouteTable
+      VpcId: !Ref Vpc
+
+  Connection:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      ConnectionInput:
+        ConnectionType: JDBC
+        ConnectionProperties:
+          JDBC_CONNECTION_URL: !Sub "jdbc:mysql://${RdsInstance.Endpoint.Address}:${RdsInstance.Endpoint.Port}/${RdsDbName}"
+          USERNAME: !Ref RdsUsername
+          PASSWORD: !Ref RdsPassword
+        PhysicalConnectionRequirements:
+          AvailabilityZone: us-east-1a
+          SecurityGroupIdList:
+            - !Ref GlueConnectionSecurityGroup
+          SubnetId: !Ref PublicSubnet1
+
+  GlueConnectionSecurityGroup: # a self-referencing security group
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Glue Connection
+      VpcId: !Ref Vpc
+
+  GlueConnectionSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref GlueConnectionSecurityGroup
+      IpProtocol: tcp
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId: !Ref GlueConnectionSecurityGroup
+
+  ExportRdsToS3Job:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: ExportRdsToS3Job
+      GlueVersion: "1.0"
+      Command:
+        Name: glueetl
+        PythonVersion: "3"
+        ScriptLocation: !Sub "s3://${Bucket}/export_rds_to_s3_job_script.py"
+      DefaultArguments:
+        --glue_database: !Ref Database
+        --glue_table: !Ref RdsTable
+        --target_s3_prefix: !Sub "s3://${Bucket}/export1"
+      Connections:
+        Connections:
+          - !Ref Connection
+      Role: !Ref GlueServiceRole
+
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      DBInstanceClass: db.t2.micro
+      AllocatedStorage: 5
+      DBName: !Ref RdsDbName
+      MasterUsername: !Ref RdsUsername
+      MasterUserPassword: !Ref RdsPassword
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !GetAtt RdsSecurityGroup.GroupId
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: RdsSubnetGroup
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.1.0.0/24
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: us-east-1b
+      CidrBlock: 10.1.1.0/24
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref RouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref RouteTable
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Exposes Mysql port
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
