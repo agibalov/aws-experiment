@@ -55,8 +55,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - dynamodb:* # TODO
-                Resource: "*"
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                Resource: !GetAtt Table.Arn
 
   DataSource:
     Type: AWS::AppSync::DataSource
