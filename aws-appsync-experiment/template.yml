@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  ApiUrl:
+    Value: !GetAtt Api.GraphQLUrl
+  ApiKey:
+    Value: !GetAtt ApiKey.ApiKey
+
+Resources:
+  Api:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      AuthenticationType: API_KEY
+      Name: DummyGraphQlApi
+
+  Schema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      Definition: |
+        type Todo {
+            id: String!
+            text: String!
+        }
+
+        type Query {
+            todos: [Todo]
+            todo(id: String!): Todo!
+        }
+
+        type Mutation {
+            putTodo(id: String!, text: String!): Todo!
+            deleteTodo(id: String!): Todo!
+        }
+
+  ApiKey:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+
+  DataSourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: appsync.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadAndWriteDynamoDb
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:* # TODO
+                Resource: "*"
+
+  DataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      Name: DummyDataSource
+      ServiceRoleArn: !GetAtt DataSourceRole.Arn
+      Type: AMAZON_DYNAMODB
+      DynamoDBConfig:
+        AwsRegion: !Ref AWS::Region
+        TableName: !Ref Table
+        UseCallerCredentials: false
+
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  PutTodoResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      DataSourceName: !GetAtt DataSource.Name
+      TypeName: Mutation
+      FieldName: putTodo
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "PutItem",
+          "key": {
+            "id": { "S" : "${context.arguments.id}" }
+          },
+          "attributeValues": {
+            "text": { "S" : "${context.arguments.text}" }
+          }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
+
+  DeleteTodoResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      DataSourceName: !GetAtt DataSource.Name
+      TypeName: Mutation
+      FieldName: deleteTodo
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "DeleteItem",
+          "key": {
+            "id": { "S" : "${context.arguments.id}" }
+          }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
+
+  GetTodosResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      DataSourceName: !GetAtt DataSource.Name
+      TypeName: Query
+      FieldName: todos
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "Scan"
+        }
+      ResponseMappingTemplate: $util.toJson($context.result.items)
+
+  GetTodoResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt Api.ApiId
+      DataSourceName: !GetAtt DataSource.Name
+      TypeName: Query
+      FieldName: todo
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+             "id": { "S" : "${context.arguments.id}" }
+           }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
