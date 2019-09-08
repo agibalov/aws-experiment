@@ -36,8 +36,16 @@ if [[ "${command}" == "deploy" ]]; then
     chmod 400 ${KeyFileName}
   fi
 
+  setup=$2
+  if [[ "${setup}" == "" ]]; then
+    echo "Setup is not specified"
+    exit 1
+  fi
+
+  templateFileName=${setup}.yml
+
   aws cloudformation deploy \
-    --template-file nat.yml \
+    --template-file ${templateFileName} \
     --stack-name ${StackName} \
     --capabilities CAPABILITY_NAMED_IAM \
     --region ${Region} \
