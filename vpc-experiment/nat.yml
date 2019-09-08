@@ -1,0 +1,169 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  KeyName:
+    Type: String
+  AmazonLinux2ImageId:
+    Type: String
+    Default: ami-0b69ea66ff7391e80
+
+Outputs:
+  InstanceAPublicIp:
+    Value: !GetAtt InstanceA.PublicIp
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicSubnetPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+  PublicSubnetPublicRouteViaInternetGateway:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.2.0/24
+
+  PrivateSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateSubnetPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateSubnetRouteTable
+
+  NatGatewayEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEip.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PrivateSubnetPublicRouteViaNat:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: InstanceSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DoWhateverItWants
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action: "*"
+              Resource: "*"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  # InstanceA is in public subnet (the subnet that has a route to the outer world via Internet Gateway)
+  # and it has a public IP
+  # As a result, the instance can talk to the internet, any web services and AWS, and it can accept connections
+  # It can also talk to InstanceB
+  InstanceA:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.nano
+      ImageId: !Ref AmazonLinux2ImageId
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          AssociatePublicIpAddress: true
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+          SubnetId: !Ref PublicSubnet
+      IamInstanceProfile: !Ref InstanceProfile
+      Tags:
+        - Key: Name
+          Value: InstanceA
+
+  # InstanceB is in private subnet (the subnet that doesn't have a route to the outer world via IG)
+  # and it does not have a public IP
+  # By default, it can only talk to other instances within the VPC (InstanceA), but not to the internet and AWS
+  # To give it access to the outer world, add NAT gateway and a route (see NatGatewayEip and co)
+  # NAT gateway has a public IP (EIP) and a private IP in a public subnet
+  InstanceB:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.nano
+      ImageId: !Ref AmazonLinux2ImageId
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+          SubnetId: !Ref PrivateSubnet
+      IamInstanceProfile: !Ref InstanceProfile
+      Tags:
+        - Key: Name
+          Value: InstanceB
