@@ -11,6 +11,7 @@ AWS Cloud Map is a service registry:
 
 * `./tool.sh deploy dns` to deploy the `PrivateDnsNamespace` setup.
 * `./tool.sh deploy http` to deploy the `HttpNamespace` setup.
+* `./tool.sh deploy ecs` to deploy the ECS integration setup. For this one, go to "aws-cloudmap-experiment-TesterLogGroup" and see how it says "hello world" from time to time. 
 * `./tool.sh undeploy` to undeploy.
 * `./tool.sh register-instance` to register service instance.
 * `./tool.sh deregister-instance` to deregister service instance.

@@ -34,7 +34,7 @@ if [[ "${command}" == "deploy" ]]; then
 elif [[ "${command}" == "undeploy" ]]; then
   undeploy_stack ${StackName}
 elif [[ "${command}" == "register-instance" ]]; then
-  serviceId=$(get_stack_output ${StackName} "DummyServiceId")
+  serviceId=$(get_stack_output ${StackName} "ServiceId")
   aws servicediscovery register-instance \
     --service-id ${serviceId} \
     --instance-id instance1 \
@@ -42,14 +42,14 @@ elif [[ "${command}" == "register-instance" ]]; then
     AWS_INSTANCE_IPV4=1.2.3.4,AWS_INSTANCE_PORT=4321 \
     --region ${Region}
 elif [[ "${command}" == "deregister-instance" ]]; then
-  serviceId=$(get_stack_output ${StackName} "DummyServiceId")
+  serviceId=$(get_stack_output ${StackName} "ServiceId")
   aws servicediscovery deregister-instance \
     --service-id ${serviceId} \
     --instance-id instance1 \
     --region ${Region}
 elif [[ "${command}" == "discover-instances" ]]; then
   namespaceName=$(get_stack_output ${StackName} "NamespaceName")
-  serviceName=$(get_stack_output ${StackName} "DummyServiceName")
+  serviceName=$(get_stack_output ${StackName} "ServiceName")
   aws servicediscovery discover-instances \
     --namespace-name ${namespaceName} \
     --service-name ${serviceName} \

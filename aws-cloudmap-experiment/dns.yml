@@ -11,9 +11,9 @@ Parameters:
 Outputs:
   NamespaceName:
     Value: !Ref NamespaceName
-  DummyServiceName:
+  ServiceName:
     Value: !Ref DummyServiceName
-  DummyServiceId:
+  ServiceId:
     Value: !Ref DummyService
 
 Resources:

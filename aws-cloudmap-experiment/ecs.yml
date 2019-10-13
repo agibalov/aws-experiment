@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Mappings:
+  ConstMap:
+    Singleton:
+      NamespaceName: experiment.local
+
+Outputs:
+  NamespaceName:
+    Value: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+  ServiceName:
+    Value: !GetAtt AppServiceRegistry.Name
+  ServiceId:
+    Value: !Ref AppServiceRegistry
+
+Resources:
+  Namespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+      Vpc: !Ref Vpc
+
+  AppServiceRegistry:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: app
+      NamespaceId: !Ref Namespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 300
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-AppLogGroup"
+      RetentionInDays: 1
+
+  TesterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-TesterLogGroup"
+      RetentionInDays: 1
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  AppTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: 512
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      Family: app
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: App
+          Memory: 256
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Image: nginx:1.17.4
+          Command:
+            - /bin/bash
+            - -c
+            - echo "hello world" > /usr/share/nginx/html/index.html && exec nginx -g 'daemon off;'
+
+  AppEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref AppTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref Az1PublicSubnet
+            - !Ref Az2PublicSubnet
+      ServiceRegistries:
+        - RegistryArn: !GetAtt AppServiceRegistry.Arn
+
+  TesterTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: 512
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      Family: tester
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: Tester
+          Memory: 256
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TesterLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Image: tutum/curl
+          Command:
+            - /bin/bash
+            - -c
+            - while [ 1 ]; do curl --connect-timeout 2 http://${APP_HOST_NAME}/;echo;sleep 1; done
+          Environment:
+            - Name: APP_HOST_NAME
+              Value:
+                Fn::Sub:
+                  - "${AppName}.${NamespaceName}"
+                  - AppName: !GetAtt AppServiceRegistry.Name
+                    NamespaceName: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+
+  TesterEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref TesterTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref Az1PublicSubnet
+            - !Ref Az2PublicSubnet
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsHostnames: true
+
+  Az1PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.0.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+
+  Az2PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Az1PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az1PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  Az2PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az2PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: ECS Allowed Ports
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
