@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  NamespaceName:
+    Type: String
+    Default: xxx.local
+  DummyServiceName:
+    Type: String
+    Default: dummy-service
+
+Outputs:
+  NamespaceName:
+    Value: !Ref NamespaceName
+  DummyServiceName:
+    Value: !Ref DummyServiceName
+  DummyServiceId:
+    Value: !Ref DummyService
+
+Resources:
+  DnsNamespace:
+    Type: AWS::ServiceDiscovery::HttpNamespace
+    Properties:
+      Name: !Ref NamespaceName
+
+  DummyService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      NamespaceId: !Ref DnsNamespace
+      Name: !Ref DummyServiceName
+
+  DummyServiceInstanceA:
+    Type: AWS::ServiceDiscovery::Instance
+    Properties:
+      ServiceId: !Ref DummyService
+      InstanceId: instance-a
+      InstanceAttributes:
+        AWS_INSTANCE_IPV4: 5.6.7.8
+        AWS_INSTANCE_PORT: 8765
