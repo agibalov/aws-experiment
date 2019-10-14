@@ -1,0 +1,461 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Mappings:
+  ConstMap:
+    Singleton:
+      NamespaceName: experiment.local
+
+Outputs:
+  NamespaceName:
+    Value: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+  ServiceName:
+    Value: !GetAtt HelloServiceRegistry.Name
+  ServiceId:
+    Value: !Ref HelloServiceRegistry
+
+Resources:
+  Namespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+      Vpc: !Ref Vpc
+
+  HelloServiceRegistry:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: hello
+      NamespaceId: !Ref Namespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 300
+
+  WorldServiceRegistry:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: world
+      NamespaceId: !Ref Namespace
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 300
+
+  HelloWorldServiceRegistry:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      NamespaceId: !Ref Namespace
+      Name: hello-world
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 300
+
+  HelloWorldServiceRegistryDummyInstance:
+    Type: AWS::ServiceDiscovery::Instance
+    Properties:
+      ServiceId: !Ref HelloWorldServiceRegistry
+      InstanceId: dummy
+      InstanceAttributes:
+        AWS_INSTANCE_IPV4: 1.1.1.1
+
+  Mesh:
+    Type: AWS::AppMesh::Mesh
+    Properties:
+      MeshName: ExperimentMesh
+
+  HelloWorldVirtualRouter:
+    Type: AWS::AppMesh::VirtualRouter
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualRouterName: hello-world-router
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 80
+              Protocol: http
+
+  HelloWorldRoute:
+    Type: AWS::AppMesh::Route
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualRouterName: !GetAtt HelloWorldVirtualRouter.VirtualRouterName
+      RouteName: hello-world-route
+      Spec:
+        HttpRoute:
+          Match:
+            Prefix: /
+          Action:
+            WeightedTargets:
+              - VirtualNode: !GetAtt HelloVirtualNode.VirtualNodeName
+                Weight: 1
+              - VirtualNode: !GetAtt WorldVirtualNode.VirtualNodeName
+                Weight: 1
+
+  HelloWorldVirtualService:
+    Type: AWS::AppMesh::VirtualService
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualServiceName: hello-world.experiment.local
+      Spec:
+        Provider:
+          VirtualRouter:
+            VirtualRouterName: !GetAtt HelloWorldVirtualRouter.VirtualRouterName
+
+  HelloVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: hello-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 80
+              Protocol: http
+        ServiceDiscovery:
+          AWSCloudMap:
+            NamespaceName: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+            ServiceName: !GetAtt HelloServiceRegistry.Name
+
+  WorldVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: world-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 80
+              Protocol: http
+        ServiceDiscovery:
+          AWSCloudMap:
+            NamespaceName: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+            ServiceName: !GetAtt WorldServiceRegistry.Name
+
+  TesterVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: tester-vn
+      Spec:
+        Backends:
+          - VirtualService:
+              VirtualServiceName: !GetAtt HelloWorldVirtualService.VirtualServiceName
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSAppMeshEnvoyAccess
+
+  AppHelloTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: 512
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      TaskRoleArn: !Ref TaskRole
+      Family: app-hello
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: Envoy
+          Memory: 256
+          User: '1337'
+          PortMappings:
+            - ContainerPort: 9901
+              Protocol: tcp
+            - ContainerPort: 15000
+              Protocol: tcp
+            - ContainerPort: 15001
+              Protocol: tcp
+          Image: !Sub '840364872350.dkr.ecr.${AWS::Region}.amazonaws.com/aws-appmesh-envoy:v1.11.2.0-prod'
+          Environment:
+            - Name: APPMESH_VIRTUAL_NODE_NAME
+              Value: !Sub 'mesh/${Mesh.MeshName}/virtualNode/${HelloVirtualNode.VirtualNodeName}'
+        - Name: App
+          Memory: 256
+          PortMappings:
+            - ContainerPort: 80
+          Image: nginx:1.17.4
+          Command:
+            - /bin/bash
+            - -c
+            - echo "hello" > /usr/share/nginx/html/index.html && exec nginx -g 'daemon off;'
+      ProxyConfiguration:
+        ContainerName: Envoy
+        ProxyConfigurationProperties:
+          - Name: IgnoredUID
+            Value: '1337'
+          - Name: ProxyIngressPort
+            Value: '15000'
+          - Name: ProxyEgressPort
+            Value: '15001'
+          - Name: AppPorts
+            Value: '80'
+          - Name: EgressIgnoredIPs
+            Value: '169.254.170.2,169.254.169.254'
+        Type: APPMESH
+
+  AppHelloEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref AppHelloTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref Az1PublicSubnet
+            - !Ref Az2PublicSubnet
+      ServiceRegistries:
+        - RegistryArn: !GetAtt HelloServiceRegistry.Arn
+
+  AppWorldTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: 512
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      TaskRoleArn: !Ref TaskRole
+      Family: app-world
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: Envoy
+          Memory: 256
+          User: '1337'
+          PortMappings:
+            - ContainerPort: 9901
+              Protocol: tcp
+            - ContainerPort: 15000
+              Protocol: tcp
+            - ContainerPort: 15001
+              Protocol: tcp
+          Image: !Sub '840364872350.dkr.ecr.${AWS::Region}.amazonaws.com/aws-appmesh-envoy:v1.11.2.0-prod'
+          Environment:
+            - Name: APPMESH_VIRTUAL_NODE_NAME
+              Value: !Sub 'mesh/${Mesh.MeshName}/virtualNode/${WorldVirtualNode.VirtualNodeName}'
+        - Name: App
+          Memory: 256
+          PortMappings:
+            - ContainerPort: 80
+          Image: nginx:1.17.4
+          Command:
+            - /bin/bash
+            - -c
+            - echo "world" > /usr/share/nginx/html/index.html && exec nginx -g 'daemon off;'
+      ProxyConfiguration:
+        ContainerName: Envoy
+        ProxyConfigurationProperties:
+          - Name: IgnoredUID
+            Value: '1337'
+          - Name: ProxyIngressPort
+            Value: '15000'
+          - Name: ProxyEgressPort
+            Value: '15001'
+          - Name: AppPorts
+            Value: '80'
+          - Name: EgressIgnoredIPs
+            Value: '169.254.170.2,169.254.169.254'
+        Type: APPMESH
+
+  AppWorldEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref AppWorldTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref Az1PublicSubnet
+            - !Ref Az2PublicSubnet
+      ServiceRegistries:
+        - RegistryArn: !GetAtt WorldServiceRegistry.Arn
+
+  TesterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-TesterLogGroup"
+      RetentionInDays: 1
+
+  TesterTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: 512
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      TaskRoleArn: !Ref TaskRole
+      Family: tester
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: Envoy
+          Memory: 256
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TesterLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: envoy
+          User: '1337'
+          PortMappings:
+            - ContainerPort: 9901
+              Protocol: tcp
+            - ContainerPort: 15000
+              Protocol: tcp
+            - ContainerPort: 15001
+              Protocol: tcp
+          Image: !Sub '840364872350.dkr.ecr.${AWS::Region}.amazonaws.com/aws-appmesh-envoy:v1.11.2.0-prod'
+          Environment:
+            - Name: APPMESH_VIRTUAL_NODE_NAME
+              Value: !Sub 'mesh/${Mesh.MeshName}/virtualNode/${TesterVirtualNode.VirtualNodeName}'
+        - Name: Tester
+          Memory: 256
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TesterLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: tester
+          Image: tutum/curl
+          Command:
+            - /bin/bash
+            - -c
+            - while [ 1 ]; do curl --connect-timeout 2 http://${HELLO_WORLD_SERVICE_HOST_NAME}/;echo;sleep 1; done
+          Environment:
+            - Name: HELLO_WORLD_SERVICE_HOST_NAME
+              Value:
+                Fn::Sub:
+                  - "${HelloWorldServiceName}.${NamespaceName}"
+                  - HelloWorldServiceName: !GetAtt HelloWorldServiceRegistry.Name
+                    NamespaceName: !FindInMap [ ConstMap, Singleton, NamespaceName ]
+      ProxyConfiguration:
+        ContainerName: Envoy
+        ProxyConfigurationProperties:
+          - Name: IgnoredUID
+            Value: '1337'
+          - Name: ProxyIngressPort
+            Value: '15000'
+          - Name: ProxyEgressPort
+            Value: '15001'
+          - Name: AppPorts
+            Value: '12345' # Not used in a client-only scenario?
+          - Name: EgressIgnoredIPs
+            Value: '169.254.170.2,169.254.169.254'
+        Type: APPMESH
+
+  TesterEcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref TesterTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref EcsSecurityGroup
+          Subnets:
+            - !Ref Az1PublicSubnet
+            - !Ref Az2PublicSubnet
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsHostnames: true
+
+  Az1PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.0.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+
+  Az2PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRouteViaIgwRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Az1PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az1PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  Az2PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Az2PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: ECS Allowed Ports
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
