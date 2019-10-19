@@ -1,0 +1,4 @@
+ChannelType,Address,Location.Country,Demographic.Platform,Demographic.Make,User.UserId
+EMAIL,andrey.agibalov+1@gmail.com,USA,Android,OnePlus,user-1
+EMAIL,andrey.agibalov+2@gmail.com,USA,Android,OnePlus,user-2
+EMAIL,andrey.agibalov+3@gmail.com,USA,Android,OnePlus,user-3

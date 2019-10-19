@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  # This needs to be manually verified with SES
+  SourceEmailAddress:
+    Type: String
+    Default: andrey.agibalov@gmail.com
+
+Outputs:
+  ImportBucketAccessRoleArn:
+    Value: !GetAtt ImportBucketAccessRole.Arn
+  ImportBucketName:
+    Value: !Ref ImportBucket
+  ApplicationId:
+    Value: !Ref App
+  AllUsersSegmentId:
+    Value: !GetAtt AllUsersSegment.SegmentId
+
+Resources:
+  ImportBucketAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: pinpoint.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+  ImportBucket:
+    Type: AWS::S3::Bucket
+
+  App:
+    Type: AWS::Pinpoint::App
+    Properties:
+      Name: DummyApp
+
+  AllUsersSegment:
+    Type: AWS::Pinpoint::Segment
+    Properties:
+      ApplicationId: !Ref App
+      Name: AllUsersSegment
+
+  EmailChannel:
+    Type: AWS::Pinpoint::EmailChannel
+    Properties:
+      ApplicationId: !Ref App
+      FromAddress: !Ref SourceEmailAddress
+      Identity: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${SourceEmailAddress}"
+
+  EventStream:
+    Type: AWS::Pinpoint::EventStream
+    Properties:
+      ApplicationId: !Ref App
+      DestinationStreamArn: !GetAtt KinesisStream.Arn
+      RoleArn: !GetAtt EventStreamRole.Arn
+
+  KinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      ShardCount: 1
+
+  EventStreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: pinpoint.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+
+  EventLoggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+        - !Ref WriteLogsPolicy
+
+  WriteLogsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogStreams
+            Resource: '*'
+
+  EventLoggerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt EventLoggerRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = function(event, context) {
+            event.Records.forEach(record => {
+              var data = JSON.parse(new Buffer(record.kinesis.data, 'base64'));
+              console.log('event', JSON.stringify(data, null, 2));
+            });
+          };
+      Runtime: nodejs8.10
+      MemorySize: 128
+
+  EventLoggerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${EventLoggerLambdaFunction}"
+      RetentionInDays: 1
+
+  EventLoggerToKinesisStreamEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt KinesisStream.Arn
+      FunctionName: !GetAtt EventLoggerLambdaFunction.Arn
+      StartingPosition: LATEST
