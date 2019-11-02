@@ -1,0 +1,5 @@
+.idea
+easy-rsa
+.server-certificate-arn.txt
+.client-certificate-arn.txt
+config.ovpn

@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  ServerCertificateArn:
+    Type: String
+  ClientCertificateArn:
+    Type: String
+
+Outputs:
+  ClientVpnEndpointId:
+    Value: !Ref ClientVpnEndpoint
+  DummyInstanceIp:
+    Value: !GetAtt DummyInstance.PrivateIp
+
+Resources:
+  VpnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-VpnLogGroup"
+      RetentionInDays: 1
+
+  ClientVpnEndpoint:
+    Type: AWS::EC2::ClientVpnEndpoint
+    Properties:
+      AuthenticationOptions:
+        - Type: certificate-authentication
+          MutualAuthentication:
+            ClientRootCertificateChainArn: !Ref ClientCertificateArn
+      ClientCidrBlock: 192.168.0.0/16
+      ConnectionLogOptions:
+        Enabled: true
+        CloudwatchLogGroup: !Ref VpnLogGroup
+      ServerCertificateArn: !Ref ServerCertificateArn
+      SplitTunnel: true # if set to false, ALL client's traffic goes through VPN gateway
+
+  ClientVpnTargetNetworkAssociation:
+    Type: AWS::EC2::ClientVpnTargetNetworkAssociation
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVpnEndpoint
+      SubnetId: !Ref VpnSubnet
+
+  ClientVpnAuthorizationRule:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      AuthorizeAllGroups: true
+      ClientVpnEndpointId: !Ref ClientVpnEndpoint
+      TargetNetworkCidr: !GetAtt Vpc.CidrBlock
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.100.0.0/16
+
+  VpnSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.100.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.100.2.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref Vpc
+      GroupDescription: InstanceSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  DummyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.nano
+      ImageId: ami-0b69ea66ff7391e80
+      NetworkInterfaces:
+        - DeviceIndex: "0"
+          GroupSet:
+            - !Ref InstanceSecurityGroup
+          SubnetId: !Ref PrivateSubnet
