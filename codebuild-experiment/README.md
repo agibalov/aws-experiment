@@ -10,3 +10,4 @@ Before deploying this, go to CodeBuild and start creating a new project manually
 4. Push changes to the repository and see how this triggers a build.
 5. Go to GitHub project's Settings -> Branches and create a branch protection rule for "master" branch and enable "Require status checks to pass before merging" and "AWS CodeBuild us-east-1 (DummyProject)". Create a feature branch, make some changes and create a merge request. See how this triggers a build and GitHub now displays the "All checks have passed" section in the merge request.
 6. `./tool.sh undeploy` to undeploy.
+1
