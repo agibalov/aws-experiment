@@ -3,6 +3,6 @@ version: 0.2
 phases:
   build:
     commands:
-      - cd aws-ci-experiment
+      - cd codepipeline-experiment
       - chmod +x ./tool.sh
       - ./tool.sh deploy-app ${ENV_TAG} ${CODEBUILD_SRC_DIR_BuildArtifact}

@@ -103,7 +103,7 @@ Resources:
         Type: LINUX_CONTAINER
       Source:
         Type: CODEPIPELINE
-        BuildSpec: aws-ci-experiment/build.yml
+        BuildSpec: codepipeline-experiment/build.yml
       TimeoutInMinutes: 5
       LogsConfig:
         CloudWatchLogs:
@@ -171,7 +171,7 @@ Resources:
         Type: LINUX_CONTAINER
       Source:
         Type: CODEPIPELINE
-        BuildSpec: aws-ci-experiment/deploy.yml
+        BuildSpec: codepipeline-experiment/deploy.yml
       TimeoutInMinutes: 5
       LogsConfig:
         CloudWatchLogs:

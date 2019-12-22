@@ -1,4 +1,4 @@
-# aws-ci-experiment
+# codepipeline-experiment
 
 The very opinionated AWS CodePipeline/CodeBuild hello world.
 

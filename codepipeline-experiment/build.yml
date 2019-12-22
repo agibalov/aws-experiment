@@ -7,11 +7,11 @@ env:
 phases:
   build:
     commands:
-      - cd aws-ci-experiment
+      - cd codepipeline-experiment
       - chmod +x ./build.sh
       - ./build.sh
 
 artifacts:
   files:
-    - aws-ci-experiment/index.html
+    - codepipeline-experiment/index.html
   discard-paths: yes
