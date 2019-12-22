@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+  ProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: DummyProjectLogGroup
+      RetentionInDays: 1
+
+  ProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowWriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt ProjectLogGroup.Arn
+
+  Project:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: DummyProject
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:3.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: codebuild-experiment/buildspec.yml
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PUSH
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref ProjectLogGroup
+
+  BuildNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: andrey.agibalov@gmail.com
+          Protocol: email
+
+  BuildNotificationsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref BuildNotificationsTopic
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowCloudwatchPublish
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action:
+              - sns:Publish
+            Resource: !Ref BuildNotificationsTopic
+
+  ProjectBuildStateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.codebuild
+        detail-type:
+          - CodeBuild Build State Change
+        detail:
+          project-name:
+            - !Ref Project
+          build-status:
+            - IN_PROGRESS
+            - SUCCEEDED
+            - FAILED
+            - STOPPED
+      Targets:
+        - Id: BuildNotificationsTopicTarget
+          Arn: !Ref BuildNotificationsTopic
+          InputTransformer:
+            InputPathsMap:
+              buildId: $.detail.build-id
+              projectName: $.detail.project-name
+              buildStatus: $.detail.build-status
+            InputTemplate: |
+              "Build '<buildId>' for build project '<projectName>' has reached the build status of '<buildStatus>'."
