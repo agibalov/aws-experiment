@@ -1,4 +1,4 @@
-group 'me.loki2302'
+group 'io.agibalov'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
@@ -15,6 +15,9 @@ dependencies {
     testCompile group: 'org.testcontainers', name: 'testcontainers', version: '1.4.3'
     testCompile group: 'org.testcontainers', name: 'localstack', version: '1.4.3'
     testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    testCompile group: 'org.springframework', name: 'spring-web', version: '5.2.5.RELEASE'
+    testCompile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.10.3'
+    testCompile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.12'
 }
 
 task aws(type: Test) {

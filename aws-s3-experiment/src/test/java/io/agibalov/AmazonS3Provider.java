@@ -1,4 +1,4 @@
-package me.loki2302;
+package io.agibalov;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
