@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Outputs:
+  SlackChannelConfigurationArn:
+    Value: !Ref SlackChannelConfiguration
+
+Resources:
+  SlackChannelConfiguration:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Properties:
+      ConfigurationName: DummyConfiguration
+      IamRoleArn: !GetAtt ChatbotRole.Arn
+      LoggingLevel: INFO
+      SlackChannelId: C012T7N7N7K
+      SlackWorkspaceId: T012D7G72LV
+      SnsTopicArns:
+        - !Ref BuildNotificationsTopic
+
+  ChatbotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: chatbot.amazonaws.com
+          Action: sts:AssumeRole
+
+  ProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: DummyProjectLogGroup
+      RetentionInDays: 1
+
+  ProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  Project:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: DummyProject
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:3.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: chatbox-experiment/buildspec.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref ProjectLogGroup
+
+  BuildNotificationsTopic:
+    Type: AWS::SNS::Topic
+
+  BuildNotificationsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref BuildNotificationsTopic
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codestar-notifications.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref BuildNotificationsTopic
+
+  NotificationRule:
+    Type: AWS::CodeStarNotifications::NotificationRule
+    Properties:
+      Name: ProjectNotificationRule
+      DetailType: FULL
+      Resource: !GetAtt Project.Arn
+      EventTypeIds:
+        - codebuild-project-build-state-failed
+        - codebuild-project-build-state-succeeded
+        - codebuild-project-build-state-in-progress
+        - codebuild-project-build-state-stopped
+      Targets:
+        - TargetType: SNS
+          TargetAddress: !Ref BuildNotificationsTopic
