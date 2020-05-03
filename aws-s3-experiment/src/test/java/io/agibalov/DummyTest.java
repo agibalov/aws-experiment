@@ -53,9 +53,6 @@ public class DummyTest {
 
     @Test
     public void versioningScenario() throws IOException {
-        // Whatever they use in LocalStack for S3, it doesn't seem to support versioning
-        assumeTrue(amazonS3Provider.isRunningAgainstAws());
-
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
         amazonS3.setBucketVersioningConfiguration(new SetBucketVersioningConfigurationRequest(
@@ -97,8 +94,8 @@ public class DummyTest {
 
     @Test
     public void eTagConstraintScenario() {
-        // Whatever they use in LocalStack for S3, it doesn't seem to support etags
-        assumeTrue(amazonS3Provider.isRunningAgainstAws());
+        assumeTrue("Whatever they use in LocalStack for S3, it doesn't seem to support etags",
+                amazonS3Provider.isRunningAgainstAws());
 
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
