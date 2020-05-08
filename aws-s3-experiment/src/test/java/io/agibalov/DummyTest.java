@@ -53,6 +53,9 @@ public class DummyTest {
 
     @Test
     public void versioningScenario() throws IOException {
+        assumeTrue("Minio doesn't support versions",
+                !(amazonS3Provider.getApiProvider() instanceof AmazonS3Provider.MinioApiProvider));
+
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
         amazonS3.setBucketVersioningConfiguration(new SetBucketVersioningConfigurationRequest(
@@ -94,8 +97,8 @@ public class DummyTest {
 
     @Test
     public void eTagConstraintScenario() {
-        assumeTrue("Whatever they use in LocalStack for S3, it doesn't seem to support etags",
-                amazonS3Provider.isRunningAgainstAws());
+        assumeTrue("LocalStack doesn't support etags",
+                !(amazonS3Provider.getApiProvider() instanceof AmazonS3Provider.LocalStackApiProvider));
 
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);

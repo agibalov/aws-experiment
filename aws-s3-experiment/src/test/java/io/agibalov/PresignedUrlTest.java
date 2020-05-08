@@ -49,8 +49,8 @@ public class PresignedUrlTest {
         // https://stackoverflow.com/a/47311387/852604
         ResponseEntity<String> responseEntity = restTemplate.getForEntity(URI.create(urlString), String.class);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
-        if (amazonS3Provider.isRunningAgainstAws()) {
-            // LocalStack doesn't handle these
+        if (!(amazonS3Provider.getApiProvider() instanceof AmazonS3Provider.LocalStackApiProvider)) {
+            // LocalStack doesn't support headers
             assertEquals("attachment", responseEntity.getHeaders().getContentDisposition().getType());
             assertEquals("custom123.txt", responseEntity.getHeaders().getContentDisposition().getFilename());
         }

@@ -21,5 +21,13 @@ dependencies {
 }
 
 task aws(type: Test) {
-    systemProperty 'AWS', '1'
+    environment 'API_PROVIDER', 'aws'
+}
+
+task localstack(type: Test) {
+    environment 'API_PROVIDER', 'localstack'
+}
+
+task minio(type: Test) {
+    environment 'API_PROVIDER', 'minio'
 }
