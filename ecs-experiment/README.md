@@ -1,5 +1,7 @@
 # ecs-experiment
 
+**NOTE: requires AWS CLI v2**
+
 An ECS hello world, illustrates both EC2 and Fargate launch types.
 
 * `./tool.sh deploy-ecs` and `./tool.sh undeploy-ecs` to deploy and undeploy the ECS stack. This includes VPC, SGs, ECS cluster, ECR, etc. This part is common no matter if you want EC2 or Fargate.

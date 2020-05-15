@@ -57,7 +57,11 @@ deploy_app() {
   ./gradlew clean bootRepackage
 
   local appJarFilename=$(basename $(ls build/libs/*.jar))
-  $(aws ecr get-login --no-include-email --region ${Region})
+
+  aws ecr get-login-password --region ${Region} | docker login \
+    --username AWS \
+    --password-stdin ${dockerRepositoryUrl}
+
   local tag=build-$(uuidgen | tail -c 8)
   local appImage="${dockerRepositoryUrl}:${tag}"
   docker build \
