@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EnvTag:
+    Type: String
+  Secret:
+    Type: String
+    Default: secret123
+
+Outputs:
+  RestApiUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}"
+  AccessibleBucketUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}/${Secret}/${AccessibleBucket}"
+  InaccessibleBucketUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}/${Secret}/${InaccessibleBucket}"
+  BucketUrlExample:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}/<SECRET_HERE>/<BUCKET_NAME_HERE>"
+  RestApiId:
+    Value: !Ref RestApi
+  RestApiStageName:
+    Value: !Ref RestApiStage
+  AccessibleBucketName:
+    Value: !Ref AccessibleBucket
+  InaccessibleBucketName:
+    Value: !Ref InaccessibleBucket
+
+Resources:
+  AccessibleBucket:
+    Type: AWS::S3::Bucket
+
+  InaccessibleBucket:
+    Type: AWS::S3::Bucket
+
+  RestApiIntegrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLambdaInvokeFunction
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ApiHandlerLambdaFunction.Arn
+
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${EnvTag}-s3-proxy"
+      Body:
+        swagger: "2.0"
+        paths:
+          /{proxy+}:
+            get:
+              parameters:
+                - name: proxy
+                  in: path
+                  required: true
+                  type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+        x-amazon-apigateway-binary-media-types:
+          - '*/*'
+
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+
+  RestApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref RestApiDeployment
+      StageName: main
+
+  ApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  ApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+        - PolicyName: ReadS3
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${AccessibleBucket}/*"
+              - Effect: Allow
+                Action: s3:ListBucket # GetObject will 403 instead of 404 if there's no object
+                Resource: !Sub "arn:aws:s3:::${AccessibleBucket}"
+
+  ApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${EnvTag}-s3-proxy"
+      Handler: index.handler
+      Role: !GetAtt ApiHandlerRole.Arn
+      Environment:
+        Variables:
+          SECRET: !Ref Secret
+          API_BASE_URL: /main
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const s3 = new AWS.S3();
+          const SECRET = process.env.SECRET;
+          const API_BASE_URL = process.env.API_BASE_URL;
+
+          exports.handler = async (event, context) => {
+            console.log('Request received:', JSON.stringify(event));
+
+            const requestPath = event.path.substring(1);
+            const [secret, bucketName, ...segments] = requestPath.split('/');
+            if (secret !== SECRET) {
+              return response(403, false, `No secret in the URL`, 'text/plain');
+            }
+            if (!bucketName) {
+              return response(400, false, `No bucket in the URL`, 'text/plain');
+            }
+
+            const path = segments.join('/');
+            const linkPrefix = `${API_BASE_URL}/${secret}/${bucketName}`;
+
+            console.log(`Trying getObject(${path})`);
+            try {
+              const data = await s3.getObject({ Bucket: bucketName, Key: path }).promise();
+              console.log(`Succeeded to getObject(${path})`);
+              return response(200, true, data.Body.toString('base64'), data.ContentType);
+            } catch (err) {
+              console.log(`Failed to getObject(${path}). ${formatAwsError(err)}`);
+              if (err.code === 'NoSuchKey' || err.code === 'UriParameterError') {
+                const indexPath = path + 'index.html';
+                console.log(`Trying getObject(${indexPath})`);
+                try {
+                  const data = await s3.getObject({ Bucket: bucketName, Key: indexPath }).promise();
+                  console.log(`Succeeded to getObject(${indexPath})`);
+                  return response(200, true, data.Body.toString('base64'), data.ContentType);
+                } catch (err) {
+                  if (err.code === 'NoSuchKey') {
+                    try {
+                      const data = await s3.listObjects({ Bucket: bucketName, Prefix: path, Delimiter: '/' }).promise();
+                      console.log(`Succeeded to listObjects(${path})`);
+
+                      var body = '<ul>';
+                      for (const prefix of data.CommonPrefixes) {
+                        body += `<li><a href="${linkPrefix}/${prefix.Prefix}">${prefix.Prefix}</a></li>`;
+                      }
+                      for (const obj of data.Contents) {
+                        body += `<li><a href="${linkPrefix}/${obj.Key}">${obj.Key}</a></li>`;
+                      }
+                      body += '</ul>';
+
+                      return response(200, false, body, 'text/html');
+                    } catch (err) {
+                      const message = `Failed to listObjects(${path}). ${formatAwsError(err)}`;
+                      console.error(message);
+                      return response(500, false, message, 'text/plain');
+                    }
+                  } else {
+                    const message = `Failed to getObject(${indexPath}). ${formatAwsError(err)}`;
+                    console.error(message);
+                    return response(500, false, message, 'text/plain');
+                  }
+                }
+              } else {
+                const message = `Failed to getObject(${path}). ${formatAwsError(err)}`;
+                console.error(message);
+                return response(500, false, message, 'text/plain');
+              }
+            }
+          };
+
+          function response(statusCode, isBase64, body, contentType) {
+            return {
+              statusCode: statusCode,
+              headers: {
+                'content-type': contentType
+              },
+              body: body,
+              isBase64Encoded: isBase64
+            };
+          }
+
+          function formatAwsError(error) {
+            return `AWS Error: ${error.message} (${error.code})`;
+          }
+      Runtime: nodejs12.x
+      Timeout: 60
+      MemorySize: 128
