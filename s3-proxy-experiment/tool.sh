@@ -6,9 +6,9 @@ Region=us-east-1
 
 command=$1
 
-function get_app_stack_name() {
+get_app_stack_name() {
   local envTag=$1
-  echo "${envTag}-app"
+  echo "${envTag}-s3-proxy"
 }
 
 undeploy_stack() {
