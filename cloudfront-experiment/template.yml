@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EnvTag:
+    Type: String
+
+Outputs:
+  BucketName:
+    Value: !Ref Bucket
+  WebsiteUrl:
+    Value: !Sub "https://${Distribution.DomainName}"
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${Bucket}/*"
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "${EnvTag}"
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Origins:
+          - Id: bucket
+            DomainName: !GetAtt Bucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          ForwardedValues:
+            QueryString: true
+          TargetOriginId: bucket
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          MaxTTL: 0
+          DefaultTTL: 0
+          LambdaFunctionAssociations:
+            - EventType: viewer-request
+              LambdaFunctionARN: !Ref LambdaVersion
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      # ${AWS::Region} is not very correct here, because CloudFront will create a separate log group
+      # for each region. Depending on what region's replica is serving the request, the logs will go
+      # to its log group.
+      LogGroupName: !Sub "/aws/lambda/${AWS::Region}.${LambdaFunction}"
+      RetentionInDays: 1
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+              - edgelambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    DeletionPolicy: Retain # do not delete this function when the stack gets deleted
+    UpdateReplacePolicy: Retain # do not delete existing function when the function name changes
+    Properties:
+      FunctionName: !Sub "${EnvTag}-edge-lambda4" # NOTE: the name needs to change on every deployment
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        ZipFile: |
+          const expectedAuthString = `Basic ${Buffer.from('user1:secret').toString('base64')}`;
+          exports.handler = async (event, context) => {
+            console.log('Request received:', JSON.stringify(event));
+
+            const request = event.Records[0].cf.request;
+            const headers = request.headers;
+
+            if (!headers.authorization || headers.authorization[0].value !== expectedAuthString) {
+              return {
+                status: 401,
+                headers: {
+                  'www-authenticate': [
+                    { key: 'WWW-Authenticate', value: 'Basic' }
+                  ]
+                }
+              };
+            }
+
+            if (request.method === 'GET' && request.uri === '/api/test') {
+              return {
+                status: 200,
+                body: `hello ${new Date().toISOString()}`,
+                bodyEncoding: 'text'
+              };
+            }
+
+            return request;
+          };
+      Runtime: nodejs12.x
+      Timeout: 5
+      MemorySize: 128
+
+  LambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref LambdaFunction
