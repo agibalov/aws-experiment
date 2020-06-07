@@ -1,4 +1,4 @@
-group 'me.loki2302'
+group 'io.agibalov'
 version '1.0-SNAPSHOT'
 
 task wrapper(type: Wrapper) {

@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EnvTag:
+    Type: String
+
+Outputs:
+  RestApiUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${RestApiStage}"
+  RestApiId:
+    Value: !Ref RestApi
+  RestApiStageName:
+    Value: !Ref RestApiStage
+
+Resources:
+  RestApiIntegrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLambdaInvokeFunction
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt JsApiHandlerLambdaFunction.Arn
+                  - !GetAtt JavaApiHandlerLambdaFunction.Arn
+
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${EnvTag}-api"
+      Body:
+        swagger: "2.0"
+        paths:
+          /js/:
+            x-amazon-apigateway-any-method:
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JsApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+          /js/{proxy+}:
+            x-amazon-apigateway-any-method:
+              parameters:
+                - name: proxy
+                  in: path
+                  required: true
+                  type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JsApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+          /java/:
+            x-amazon-apigateway-any-method:
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JavaApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+          /java/{proxy+}:
+            x-amazon-apigateway-any-method:
+              parameters:
+                - name: proxy
+                  in: path
+                  required: true
+                  type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JavaApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt RestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+        x-amazon-apigateway-binary-media-types:
+          - '*/*'
+
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+
+  RestApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref RestApiDeployment
+      StageName: main
+
+  JsApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JsApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  JavaApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JavaApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  ApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  JsApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${EnvTag}-js-lambda-experiment-handler"
+      Handler: index.handler
+      Role: !GetAtt ApiHandlerRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = function(event, context, callback) {
+            let body = null;
+            if (event.isBase64Encoded) {
+              body = Buffer.from(event.body, 'base64').toString();
+            }
+
+            console.log('Request received:', JSON.stringify(event), 'decoded body:', body);
+            callback(null, {
+              statusCode: 200,
+              headers: {},
+              body: JSON.stringify({
+                message: `${new Date().toISOString()} Accepted! Request ID: ${event.requestContext.requestId}`
+              }),
+              isBase64Encoded: false
+            });
+          };
+      Runtime: nodejs10.x
+      Timeout: 60
+      MemorySize: 128
+
+  JavaApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${EnvTag}-java-lambda-experiment-handler"
+      Handler: io.agibalov.DummyRequestStreamHandler
+      Role: !GetAtt ApiHandlerRole.Arn
+      Code: ./build/distributions/aws-lambda-experiment-1.0-SNAPSHOT.zip
+      Runtime: java8
+      Timeout: 60
+      MemorySize: 128

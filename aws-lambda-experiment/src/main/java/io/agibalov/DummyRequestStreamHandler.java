@@ -1,4 +1,4 @@
-package me.loki2302;
+package io.agibalov;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;

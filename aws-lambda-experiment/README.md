@@ -1,6 +1,8 @@
-Lambda/API Gateway hello world.
+# aws-lambda-experiment
+
+A Lambda/API Gateway hello world.
 
 * `./gradlew clean distZip`
-* `./tool.sh deploy`
-* `./tool.sh test`
-* `./tool.sh undeploy`
+* `envTag=dev ./tool.sh deploy`
+* `envTag=dev ./tool.sh test`
+* `envTag=dev ./tool.sh undeploy`

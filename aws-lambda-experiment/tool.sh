@@ -1,76 +1,99 @@
 #!/bin/bash
 
-region=us-west-1
-stackName=dummy-stack
-codeBucketName=loki2302-code-bucket
+set -x
+
+Region=us-east-1
 
 command=$1
 
-if [ "$command" == "" ]; then
-  echo "No command specified"
-elif [ "$command" == "deploy" ]; then
-  echo "DEPLOYING"
+get_source_bucket_name() {
+  local envTag=$1
+  echo "${envTag}-lambda-experiment-source"
+}
 
-  aws s3 mb s3://$codeBucketName --region $region
+get_app_stack_name() {
+  local envTag=$1
+  echo "${envTag}-lambda-experiment"
+}
 
-  aws s3 cp ./build/distributions/aws-lambda-experiment-1.0-SNAPSHOT.zip s3://$codeBucketName/ --acl public-read
-
-  aws cloudformation create-stack \
-    --stack-name $stackName \
-    --template-body file://dummy.template \
-    --region $region \
-    --capabilities CAPABILITY_IAM
-
-  aws cloudformation wait stack-create-complete \
-    --stack-name $stackName \
-    --region $region
-
-elif [ "$command" == "undeploy" ]; then
-  echo "UNDEPLOYING"
-
+undeploy_stack() {
+  local stackName=$1
   aws cloudformation delete-stack \
-    --stack-name $stackName \
-    --region $region
+    --stack-name ${stackName} \
+    --region ${Region}
 
   aws cloudformation wait stack-delete-complete \
-    --stack-name $stackName \
-    --region $region
+    --stack-name ${stackName} \
+    --region ${Region}
+}
 
-  aws s3 rm s3://$codeBucketName/ --recursive
-
-  aws s3 rb s3://$codeBucketName --force
-
-elif [ "$command" == "test" ]; then
-  echo "TESTING"
-
-  # Python is used here to extract OutputValue from JSON provided by aws cloudformation
-  # [
-  #    {
-  #        "OutputValue": "tb4pzrxu02",
-  #        "OutputKey": "ApiId"
-  #    }
-  # ]
-  ApiId=`\
+get_stack_output() {
+  local stackName=$1
+  local outputName=$2
   aws cloudformation describe-stacks \
-    --stack-name $stackName \
-    --query Stacks[0].Outputs \
-    --region $region | \
-  python -c "import json,sys;print json.load(sys.stdin)[0]['OutputValue']
-  "`
-  
-  declare -a resources=(
-    "dummyJs"
-    "dummyJava"
-  )
+    --stack-name ${stackName} \
+    --query 'Stacks[0].Outputs[?OutputKey==`'${outputName}'`].OutputValue' \
+    --output text \
+    --region ${Region}
+}
 
-  for resource in "${resources[@]}"
-  do
-    resourceUrl="https://$ApiId.execute-api.$region.amazonaws.com/prod/$resource"
-    echo "Testing GET $resourceUrl"
-    curl $resourceUrl
-    echo ""
-  done
+if [[ "${command}" == "deploy" ]]; then
+  envTag=${envTag:?not set or empty}
+  sourceBucketName=$(get_source_bucket_name ${envTag})
+  aws s3 mb s3://${sourceBucketName} --region ${Region}
+  aws cloudformation package \
+    --template-file template.yml \
+    --s3-bucket ${sourceBucketName} \
+    --output-template-file _packaged.yml
 
+  stackName=$(get_app_stack_name ${envTag})
+  aws cloudformation deploy \
+    --template-file _packaged.yml \
+    --stack-name ${stackName} \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region ${Region} \
+    --parameter-overrides \
+    EnvTag=${envTag}
+
+  restApiId=$(get_stack_output ${stackName} "RestApiId")
+  restApiStageName=$(get_stack_output ${stackName} "RestApiStageName")
+  aws apigateway create-deployment \
+    --rest-api-id ${restApiId} \
+    --stage-name ${restApiStageName} \
+    --region ${Region}
+
+elif [[ "${command}" == "undeploy" ]]; then
+  envTag=${envTag:?not set or empty}
+  stackName=$(get_app_stack_name ${envTag})
+  undeploy_stack ${stackName}
+
+  sourceBucketName=$(get_source_bucket_name ${envTag})
+  aws s3 rm s3://${sourceBucketName}/ --recursive
+  aws s3 rb s3://${sourceBucketName}
+
+elif [[ "${command}" == "test" ]]; then
+  envTag=${envTag:?not set or empty}
+  stackName=$(get_app_stack_name ${envTag})
+  restApiUrl=$(get_stack_output ${stackName} "RestApiUrl")
+  curl \
+    --request POST \
+    --write-out '\n' \
+    ${restApiUrl}/js
+  curl \
+    --request POST \
+    --write-out '\n' \
+    ${restApiUrl}/js/123
+  curl \
+    --request POST \
+    --write-out '\n' \
+    ${restApiUrl}/java
+  curl \
+    --request POST \
+    --write-out '\n' \
+    ${restApiUrl}/java/123
+
+elif [[ "${command}" == "" ]]; then
+  echo "No command specified"
 else
-  echo "Unknown command '$command'"
+  echo "Unknown command ${command}"
 fi
