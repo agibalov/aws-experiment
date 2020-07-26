@@ -40,6 +40,11 @@ get_dns_state_key() {
   echo "dns"
 }
 
+get_shared_state_key() {
+  local sharedEnvTag=$1
+  echo "${sharedEnvTag}-shared"
+}
+
 if [[ "${command}" == "init" ]]; then
   aws s3api create-bucket --bucket ${StateBucketName} --region ${Region}
 
@@ -58,6 +63,22 @@ elif [[ "${command}" == *-dns ]]; then
 
   if [[ "${command}" == undeploy-* ]]; then
     delete_environment ${stateKey}
+  fi
+
+elif [[ "${command}" == *-shared ]]; then
+  sharedEnvTag=${sharedEnvTag:?not set or empty}
+
+  sharedStateKey=$(get_shared_state_key ${sharedEnvTag})
+  activate_environment ${sharedStateKey} ${TerraformModulesPath}/shared
+
+  terraformCommand=$(terraform_command_from_command ${command})
+
+  AWS_REGION=${Region} \
+  TF_VAR_shared_env_tag=${sharedEnvTag} \
+  terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/shared
+
+  if [[ "${command}" == undeploy-* ]]; then
+    delete_environment ${sharedStateKey}
   fi
 
 elif [[ "${command}" == "" ]]; then
