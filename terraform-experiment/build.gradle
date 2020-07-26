@@ -1,11 +1,15 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '2.2.6.RELEASE'
+    id 'org.springframework.boot' version '2.3.2.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
 }
 
 group 'io.agibalov'
 version '1.0-SNAPSHOT'
+
+wrapper {
+    gradleVersion = '6.3'
+}
 
 repositories {
     mavenCentral()
