@@ -29,14 +29,8 @@ resource "aws_route53_record" "ns" {
   zone_id = data.aws_route53_zone.parent_zone.zone_id
   name = var.zone_name
   type = "NS"
-  ttl = "30"
-
-  records = [
-    aws_route53_zone.zone.name_servers[0],
-    aws_route53_zone.zone.name_servers[1],
-    aws_route53_zone.zone.name_servers[2],
-    aws_route53_zone.zone.name_servers[3]
-  ]
+  ttl = 30
+  records = aws_route53_zone.zone.name_servers[*]
 }
 
 resource "aws_acm_certificate" "certificate" {
@@ -51,11 +45,11 @@ resource "aws_acm_certificate_validation" "certificate_validation" {
 }
 
 resource "aws_route53_record" "certificate_validation_record" {
+  zone_id = aws_route53_zone.zone.zone_id
   name = aws_acm_certificate.certificate.domain_validation_options[0].resource_record_name
   type = aws_acm_certificate.certificate.domain_validation_options[0].resource_record_type
-  zone_id = aws_route53_zone.zone.zone_id
-  records = [aws_acm_certificate.certificate.domain_validation_options[0].resource_record_value]
   ttl = 60
+  records = [aws_acm_certificate.certificate.domain_validation_options[0].resource_record_value]
 }
 
 output "zone_suffix" {
