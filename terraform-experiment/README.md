@@ -3,6 +3,7 @@
 ## Prerequisites
 
 * Terraform v0.12.26
+* AWS CLI v2
 
 ## How to deploy and run
 

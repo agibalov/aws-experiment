@@ -45,6 +45,11 @@ get_shared_state_key() {
   echo "${sharedEnvTag}-shared"
 }
 
+get_app_state_key() {
+  local appEnvTag=$1
+  echo "${appEnvTag}-app"
+}
+
 if [[ "${command}" == "init" ]]; then
   aws s3api create-bucket --bucket ${StateBucketName} --region ${Region}
 
@@ -79,6 +84,26 @@ elif [[ "${command}" == *-shared ]]; then
 
   if [[ "${command}" == undeploy-* ]]; then
     delete_environment ${sharedStateKey}
+  fi
+
+elif [[ "${command}" == *-app ]]; then
+  sharedEnvTag=${sharedEnvTag:?not set or empty}
+  appEnvTag=${appEnvTag:?not set or empty}
+
+  sharedStateKey=$(get_shared_state_key ${sharedEnvTag})
+  appStateKey=$(get_app_state_key ${appStateKey})
+  activate_environment ${appStateKey} ${TerraformModulesPath}/app
+
+  terraformCommand=$(terraform_command_from_command ${command})
+
+  AWS_REGION=${Region} \
+  TF_VAR_state_bucket_name=${StateBucketName} \
+  TF_VAR_shared_state_key=${sharedStateKey} \
+  TF_VAR_app_env_tag=${appEnvTag} \
+  terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/app
+
+  if [[ "${command}" == undeploy-* ]]; then
+    delete_environment ${appStateKey}
   fi
 
 elif [[ "${command}" == "" ]]; then
