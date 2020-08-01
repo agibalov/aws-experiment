@@ -1,11 +1,3 @@
-data "terraform_remote_state" "shared" {
-  backend = "s3"
-  config = {
-    bucket = var.state_bucket_name
-    key = var.shared_state_key
-  }
-}
-
 provider "mysql" {
   endpoint = "${data.terraform_remote_state.shared.outputs.db_host}:${data.terraform_remote_state.shared.outputs.db_port}"
   username = data.terraform_remote_state.shared.outputs.db_master_username

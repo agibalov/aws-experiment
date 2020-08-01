@@ -90,6 +90,7 @@ elif [[ "${command}" == *-app ]]; then
   sharedEnvTag=${sharedEnvTag:?not set or empty}
   appEnvTag=${appEnvTag:?not set or empty}
 
+  dnsStateKey=$(get_dns_state_key)
   sharedStateKey=$(get_shared_state_key ${sharedEnvTag})
   appStateKey=$(get_app_state_key ${appStateKey})
   activate_environment ${appStateKey} ${TerraformModulesPath}/app
@@ -98,6 +99,7 @@ elif [[ "${command}" == *-app ]]; then
 
   AWS_REGION=${Region} \
   TF_VAR_state_bucket_name=${StateBucketName} \
+  TF_VAR_dns_state_key=${dnsStateKey} \
   TF_VAR_shared_state_key=${sharedStateKey} \
   TF_VAR_app_env_tag=${appEnvTag} \
   terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/app
