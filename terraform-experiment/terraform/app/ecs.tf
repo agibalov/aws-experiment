@@ -98,6 +98,12 @@ resource "aws_security_group" "alb" {
     to_port = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
+  /*egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }*/
 }
 
 resource "aws_security_group" "ecs" {
@@ -113,6 +119,12 @@ resource "aws_security_group" "ecs" {
     from_port = 0
     to_port = 0
     security_groups = [aws_security_group.alb.id]
+  }
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
