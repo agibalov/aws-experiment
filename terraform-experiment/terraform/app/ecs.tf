@@ -91,27 +91,31 @@ resource "aws_ecs_service" "app" {
 }
 
 resource "aws_security_group" "alb" {
+  name = "${var.app_env_tag}-alb"
   vpc_id = data.terraform_remote_state.shared.outputs.vpc_id
+  // TODO: what does it actually need to be?
   ingress {
-    protocol = "tcp"
-    from_port = 80
-    to_port = 80
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  /*egress {
     protocol = "-1"
     from_port = 0
     to_port = 0
     cidr_blocks = ["0.0.0.0/0"]
-  }*/
+  }
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "ecs" {
+  name = "${var.app_env_tag}-ecs"
   vpc_id = data.terraform_remote_state.shared.outputs.vpc_id
+  // TODO: what does it actually need to be?
   ingress {
-    protocol = "tcp"
-    from_port = 80
-    to_port = 80
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
@@ -178,4 +182,15 @@ resource "aws_alb_target_group" "app" {
   }
   deregistration_delay = 10
   target_type = "ip"
+}
+
+resource "aws_route53_record" "app" {
+  zone_id = data.terraform_remote_state.dns.outputs.zone_id
+  name = var.app_env_tag == "dev" ? "" : var.app_env_tag
+  type = "A"
+  alias {
+    evaluate_target_health = false
+    name = aws_lb.alb.dns_name
+    zone_id = aws_lb.alb.zone_id
+  }
 }

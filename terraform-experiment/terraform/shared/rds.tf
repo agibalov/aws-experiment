@@ -23,12 +23,18 @@ resource "aws_db_instance" "db_instance" {
 }
 
 resource "aws_security_group" "db_security_group" {
+  name = "${var.shared_env_tag}-rds"
   vpc_id = aws_vpc.vpc.id
-  description = "Mysql public access"
   ingress {
     protocol = "tcp"
     from_port = 3306
     to_port = 3306
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    protocol = "-1"
+    from_port = 0
+    to_port = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
 }

@@ -92,7 +92,7 @@ elif [[ "${command}" == *-app ]]; then
 
   dnsStateKey=$(get_dns_state_key)
   sharedStateKey=$(get_shared_state_key ${sharedEnvTag})
-  appStateKey=$(get_app_state_key ${appStateKey})
+  appStateKey=$(get_app_state_key ${appEnvTag})
   activate_environment ${appStateKey} ${TerraformModulesPath}/app
 
   terraformCommand=$(terraform_command_from_command ${command})
