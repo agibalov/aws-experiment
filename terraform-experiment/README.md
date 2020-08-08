@@ -15,3 +15,5 @@
 * `sharedEnvTag=<SharedEnvTag> ./tool.sh undeploy-shared` to undeploy Shared resources.
 * `sharedEnvTag=<SharedEnvTag> appEnvTag=<AppEnvTag> ./tool.sh deploy-app` to deploy App resources (Mysql DB, ECS cluster, etc).
 * `sharedEnvTag=<SharedEnvTag> appEnvTag=<AppEnvTag> ./tool.sh undeploy-app` to undeploy App resources.
+* `sharedEnvTag=<SharedEnvTag> appEnvTag=<AppEnvTag> branch=<GitBranch> ./tool.sh deploy-pipeline` to deploy the CodeBuild project that runs `deploy-app` on each push.
+* `sharedEnvTag=<SharedEnvTag> appEnvTag=<AppEnvTag> branch=<GitBranch> ./tool.sh undeploy-pipeline` to undeploy the CodeBuild project.
