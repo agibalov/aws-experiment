@@ -15,6 +15,7 @@ phases:
 
   build:
     commands:
+      - cd terraform-experiment
       - ./gradlew bootJar
       - >
         sharedEnvTag=${SHARED_ENV_TAG}
