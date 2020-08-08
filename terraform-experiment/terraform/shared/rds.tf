@@ -31,12 +31,6 @@ resource "aws_security_group" "db_security_group" {
     to_port = 3306
     cidr_blocks = ["0.0.0.0/0"]
   }
-  egress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 resource "aws_db_subnet_group" "db_subnet_group" {

@@ -22,7 +22,8 @@ bootJar {
 dependencies {
     testImplementation 'junit:junit'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    //implementation 'mysql:mysql-connector-java:8.0.20'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'mysql:mysql-connector-java:8.0.20'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

@@ -71,10 +71,15 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
     image = "${aws_ecr_repository.ecr.repository_url}:${local.build_tag}"
-    environment = [{
-      name = "APP_ENV_TAG",
-      value = var.app_env_tag
-    }]
+    environment = [
+      { name = "APP_ENV_TAG", value = var.app_env_tag },
+      { name = "MYSQL_HOST", value = data.terraform_remote_state.shared.outputs.db_host },
+      { name = "MYSQL_PORT", value = tostring(data.terraform_remote_state.shared.outputs.db_port) },
+      { name = "MYSQL_DATABASE", value = mysql_database.db.name },
+      { name = "MYSQL_PROPERTIES", value = "" },
+      { name = "MYSQL_USERNAME", value = mysql_user.user.user },
+      { name = "MYSQL_PASSWORD", value = random_password.password.result }
+    ]
   }])
 }
 
