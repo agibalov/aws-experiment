@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @RequestMapping("/")
 public class DummyController {
@@ -18,9 +19,18 @@ public class DummyController {
 
     @GetMapping
     public ResponseEntity<?> index() {
-        int result = jdbcTemplate.queryForObject("select 2 + 3", new MapSqlParameterSource(), Integer.class);
+        String id = UUID.randomUUID().toString();
+        jdbcTemplate.update(
+                "insert into Notes(id, text) values(:id, :text)",
+                new MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("text", String.format("Note #%s", id)));
+        int count = jdbcTemplate.queryForObject(
+                "select count(*) from Notes",
+                new MapSqlParameterSource(),
+                Integer.class);
         return ResponseEntity.ok(MessageDto.builder()
-                .message(String.format("Hello world! %s (%d)", Instant.now(), result))
+                .message(String.format("Hello world! %s (count=%d)", Instant.now(), count))
                 .build());
     }
 }

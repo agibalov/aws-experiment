@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '2.3.2.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+    id 'org.flywaydb.flyway' version '6.2.4'
 }
 
 group 'io.agibalov'

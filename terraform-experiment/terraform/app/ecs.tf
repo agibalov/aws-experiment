@@ -49,7 +49,7 @@ locals {
 }
 
 resource "aws_ecs_task_definition" "app" {
-  depends_on = [null_resource.image_in_ecr]
+  depends_on = [null_resource.image_in_ecr, null_resource.db_migration]
   cpu = 512
   memory = 1024
   execution_role_arn = aws_iam_role.app_execution.arn

@@ -24,3 +24,18 @@ resource "mysql_grant" "grant" {
   database = mysql_database.db.name
   privileges = ["all"]
 }
+
+resource "null_resource" "db_migration" {
+  triggers = {
+    timestamp = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = "./gradlew flywayMigrate -i"
+    environment = {
+      FLYWAY_USER = mysql_user.user.user
+      FLYWAY_PASSWORD = random_password.password.result
+      FLYWAY_URL = "jdbc:mysql://${data.terraform_remote_state.shared.outputs.db_host}:${data.terraform_remote_state.shared.outputs.db_port}/${mysql_database.db.name}"
+    }
+  }
+}
