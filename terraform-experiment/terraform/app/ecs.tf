@@ -41,6 +41,11 @@ resource "aws_ecs_cluster" "cluster" {
 data "aws_region" "current" {
 }
 
+locals {
+  container_name = "app"
+  container_port = 8080
+}
+
 resource "aws_ecs_task_definition" "app" {
   depends_on = [null_resource.image_in_ecr]
   cpu = 512
@@ -51,9 +56,9 @@ resource "aws_ecs_task_definition" "app" {
   network_mode = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   container_definitions = jsonencode([{
-    name = "app"
+    name = local.container_name
     portMappings = [{
-      containerPort = 8080 // TODO
+      containerPort = local.container_port
     }]
     logConfiguration = {
       logDriver = "awslogs"
@@ -84,8 +89,8 @@ resource "aws_ecs_service" "app" {
     subnets = data.terraform_remote_state.shared.outputs.public_subnet_ids
   }
   load_balancer {
-    container_name = "app" // TODO
-    container_port = 8080 // TODO
+    container_name = local.container_name
+    container_port = local.container_port
     target_group_arn = aws_alb_target_group.app.arn
   }
 }
@@ -170,7 +175,7 @@ resource "aws_lb_listener" "https" {
 
 resource "aws_alb_target_group" "app" {
   vpc_id = data.terraform_remote_state.shared.outputs.vpc_id
-  port = 8080 // TODO
+  port = local.container_port
   protocol = "HTTP"
   health_check {
     interval = 15
