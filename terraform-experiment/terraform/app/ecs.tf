@@ -44,6 +44,8 @@ data "aws_region" "current" {
 locals {
   container_name = "app"
   container_port = 8080
+  http_listener_port = 80
+  https_listener_port = 443
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -98,17 +100,22 @@ resource "aws_ecs_service" "app" {
 resource "aws_security_group" "alb" {
   name = "${var.app_env_tag}-alb"
   vpc_id = data.terraform_remote_state.shared.outputs.vpc_id
-  // TODO: what does it actually need to be?
   ingress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
+    protocol = "tcp"
+    from_port = local.http_listener_port
+    to_port = local.http_listener_port
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    protocol = "tcp"
+    from_port = local.https_listener_port
+    to_port = local.https_listener_port
     cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
+    protocol = "tcp"
+    from_port = local.container_port
+    to_port = local.container_port
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -116,24 +123,11 @@ resource "aws_security_group" "alb" {
 resource "aws_security_group" "ecs" {
   name = "${var.app_env_tag}-ecs"
   vpc_id = data.terraform_remote_state.shared.outputs.vpc_id
-  // TODO: what does it actually need to be?
   ingress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
+    protocol = "tcp"
+    from_port = local.container_port
+    to_port = local.container_port
     security_groups = [aws_security_group.alb.id]
-  }
-  egress {
-    protocol = "-1"
-    from_port = 0
-    to_port = 0
-    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -147,14 +141,14 @@ resource "aws_lb" "alb" {
 
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.alb.arn
-  port = 80
+  port = local.http_listener_port
   protocol = "HTTP"
   default_action {
     type = "redirect"
     redirect {
       host = "#{host}"
       path = "/#{path}"
-      port = 443
+      port = local.https_listener_port
       protocol = "HTTPS"
       query = "#{query}"
       status_code = "HTTP_301"
@@ -164,7 +158,7 @@ resource "aws_lb_listener" "http" {
 
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.alb.arn
-  port = 443
+  port = local.https_listener_port
   protocol = "HTTPS"
   certificate_arn = data.terraform_remote_state.dns.outputs.certificate_arn
   default_action {
