@@ -1,0 +1,22 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: openjdk11
+    commands:
+      - >
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &&
+        unzip -q awscliv2.zip &&
+        ./aws/install
+      - curl "https://releases.hashicorp.com/terraform/0.12.26/terraform_0.12.26_linux_amd64.zip" -o "terraform.zip" &&
+        unzip -q terraform.zip -d /usr/local/bin
+      - export PATH="/usr/local/bin:${PATH}"
+
+  build:
+    commands:
+      - ./gradlew bootJar
+      - >
+        sharedEnvTag=${SHARED_ENV_TAG}
+        appEnvTag=${APP_ENV_TAG}
+        ./tool.sh deploy-app

@@ -50,6 +50,11 @@ get_app_state_key() {
   echo "${appEnvTag}-app"
 }
 
+get_pipeline_state_key() {
+  local appEnvTag=$1
+  echo "${appEnvTag}-pipeline"
+}
+
 if [[ "${command}" == "init" ]]; then
   aws s3api create-bucket --bucket ${StateBucketName} --region ${Region}
 
@@ -106,6 +111,26 @@ elif [[ "${command}" == *-app ]]; then
 
   if [[ "${command}" == undeploy-* ]]; then
     delete_environment ${appStateKey}
+  fi
+
+elif [[ "${command}" == *-pipeline ]]; then
+  sharedEnvTag=${sharedEnvTag:?not set or empty}
+  appEnvTag=${appEnvTag:?not set or empty}
+  branch=${branch:?not set or empty}
+
+  pipelineStateKey=$(get_pipeline_state_key ${appEnvTag})
+  activate_environment ${pipelineStateKey} ${TerraformModulesPath}/pipeline
+
+  terraformCommand=$(terraform_command_from_command ${command})
+
+  AWS_REGION=${Region} \
+  TF_VAR_shared_env_tag=${sharedEnvTag} \
+  TF_VAR_app_env_tag=${appEnvTag} \
+  TF_VAR_branch_name=${branch} \
+  terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/pipeline
+
+  if [[ "${command}" == undeploy-* ]]; then
+    delete_environment ${pipelineStateKey}
   fi
 
 elif [[ "${command}" == "" ]]; then
