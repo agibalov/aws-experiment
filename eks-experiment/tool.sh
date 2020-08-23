@@ -109,6 +109,8 @@ elif [[ "${command}" == *-layer3 ]]; then
 
 elif [[ "${command}" == *-pipeline ]]; then
   envTag=${envTag:?not set or empty}
+  branch=${branch:?not set or empty}
+
   stateKey=$(get_pipeline_state_key ${envTag})
   activate_environment ${stateKey} ${TerraformModulesPath}/pipeline
 
@@ -116,6 +118,7 @@ elif [[ "${command}" == *-pipeline ]]; then
 
   AWS_REGION=${Region} \
   TF_VAR_env_tag=${envTag} \
+  TF_VAR_branch_name=${branch} \
   terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/pipeline
 
   if [[ "${command}" == undeploy-* ]]; then
