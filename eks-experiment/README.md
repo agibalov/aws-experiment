@@ -16,6 +16,7 @@ An AWS EKS hello world.
 * `./tool.sh deploy-layer1` and `./tool.sh undeploy-layer1` to deploy and undeploy Layer 1 resources: DNS zone and Kubernetes deployment role.
 * `./tool.sh deploy-layer2` and `./tool.sh undeploy-layer2` to deploy and undeploy Layer 2 resources: VPC and EKS cluster.
 * `envTag=<EnvTag> ./tool.sh deploy-layer3` and `envTag=<EnvTag>  ./tool.sh undeploy-layer3` to deploy and undeploy Layer 3 resources: Kubernetes deployment, service, DNS records. Make sure to `./gradlew clean bootJar` before deploying Layer 3.
+* `envTag=<EnvTag> ./tool.sh deploy-pipeline` and `envTag=<EnvTag>  ./tool.sh undeploy-pipeline` to deploy and undeploy Pipeline resources: CodeBuild project, log group, etc.
 * `./tool.sh update-kubeconfig` to update your kubectl config. After it you can use `kubectl` to interact with Kubernetes cluster directly: `kubectl get pods`, `kubectl logs <POD> --follow`, etc.
 
 ## Notes
