@@ -45,12 +45,12 @@ get_layer2_state_key() {
 }
 
 get_layer3_state_key() {
-  local envTag=?1
+  local envTag=$1
   echo "${envTag}-layer3"
 }
 
 get_pipeline_state_key() {
-  local envTag=?1
+  local envTag=$1
   echo "${envTag}-pipeline"
 }
 
