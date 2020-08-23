@@ -1,6 +1,16 @@
 # eks-experiment
 
-An AWS EKS hello world. 
+An AWS EKS hello world.
+
+## Prerequisites
+
+* AWS CLI v2
+* Terraform v0.12.26
+* openssl CLI
+* Docker
+* (optional) kubectl
+
+## How to deploy and run
 
 * `./tool.sh init` and `./tool.sh deinit` to create and destroy an S3 bucket where Terraform will store the state files.
 * `./tool.sh deploy-layer1` and `./tool.sh undeploy-layer1` to deploy and undeploy Layer 1 resources: DNS zone and Kubernetes deployment role.

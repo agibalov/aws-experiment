@@ -49,6 +49,11 @@ get_layer3_state_key() {
   echo "${envTag}-layer3"
 }
 
+get_pipeline_state_key() {
+  local envTag=?1
+  echo "${envTag}-pipeline"
+}
+
 if [[ "${command}" == "init" ]]; then
   aws s3api create-bucket --bucket ${StateBucketName} --region ${Region}
 
@@ -97,6 +102,21 @@ elif [[ "${command}" == *-layer3 ]]; then
   TF_VAR_layer1_state_key=$(get_layer1_state_key) \
   TF_VAR_layer2_state_key=$(get_layer2_state_key) \
   terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/layer3
+
+  if [[ "${command}" == undeploy-* ]]; then
+    delete_environment ${stateKey}
+  fi
+
+elif [[ "${command}" == *-pipeline ]]; then
+  envTag=${envTag:?not set or empty}
+  stateKey=$(get_pipeline_state_key ${envTag})
+  activate_environment ${stateKey} ${TerraformModulesPath}/pipeline
+
+  terraformCommand=$(terraform_command_from_command ${command})
+
+  AWS_REGION=${Region} \
+  TF_VAR_env_tag=${envTag} \
+  terraform ${terraformCommand} -auto-approve ${TerraformModulesPath}/pipeline
 
   if [[ "${command}" == undeploy-* ]]; then
     delete_environment ${stateKey}
