@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.3.2.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+}
+
+group 'io.agibalov'
+version '1.0-SNAPSHOT'
+
+wrapper {
+    gradleVersion = '6.3'
+}
+
+repositories {
+    mavenCentral()
+}
+
+bootJar {
+    launchScript()
+}
+
+dependencies {
+    testImplementation 'junit:junit'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.11.847'
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.11.847'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
