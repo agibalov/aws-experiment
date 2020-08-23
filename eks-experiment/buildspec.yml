@@ -14,5 +14,5 @@ phases:
       - cd eks-experiment
       - ./gradlew clean bootJar
       - >
-        EnvTag=${ENV_TAG}
+        envTag=${ENV_TAG}
         ./tool.sh deploy-layer3
