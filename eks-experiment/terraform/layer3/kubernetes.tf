@@ -28,6 +28,8 @@ resource "kubernetes_service_account" "service_account" {
 }
 
 resource "kubernetes_deployment" "aws_eks_experiment" {
+  depends_on = [null_resource.image_in_ecr]
+
   metadata {
     name = "${var.env_tag}-eks-experiment"
   }
@@ -56,7 +58,7 @@ resource "kubernetes_deployment" "aws_eks_experiment" {
         }
 
         container {
-          image = "nginx"
+          image = "${aws_ecr_repository.ecr.repository_url}:${local.build_tag}"
           name  = "app"
 
           resources {
@@ -68,8 +70,7 @@ resource "kubernetes_deployment" "aws_eks_experiment" {
 
           port {
             protocol = "TCP"
-            #container_port = 8080
-            container_port = 80
+            container_port = 8080
           }
         }
       }
@@ -92,14 +93,12 @@ resource "kubernetes_service" "aws_eks_experiment" {
     port {
       name = "http"
       port = 80
-      #target_port = 8080
-      target_port = 80
+      target_port = 8080
     }
     port {
       name = "https"
       port = 443
-      #target_port = 8080
-      target_port = 80
+      target_port = 8080
     }
     selector = {
       app = "${var.env_tag}-eks-experiment"

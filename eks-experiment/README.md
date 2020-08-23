@@ -5,7 +5,7 @@ An AWS EKS hello world.
 * `./tool.sh init` and `./tool.sh deinit` to create and destroy an S3 bucket where Terraform will store the state files.
 * `./tool.sh deploy-layer1` and `./tool.sh undeploy-layer1` to deploy and undeploy Layer 1 resources: DNS zone and Kubernetes deployment role.
 * `./tool.sh deploy-layer2` and `./tool.sh undeploy-layer2` to deploy and undeploy Layer 2 resources: VPC and EKS cluster.
-* `envTag=<EnvTag> ./tool.sh deploy-layer3` and `envTag=<EnvTag>  ./tool.sh undeploy-layer3` to deploy and undeploy Layer 3 resources: Kubernetes deployment, service, DNS records.
+* `envTag=<EnvTag> ./tool.sh deploy-layer3` and `envTag=<EnvTag>  ./tool.sh undeploy-layer3` to deploy and undeploy Layer 3 resources: Kubernetes deployment, service, DNS records. Make sure to `./gradlew clean bootJar` before deploying Layer 3.
 
 ## Notes
 
