@@ -27,31 +27,14 @@ resource "aws_iam_role" "pod_role" {
   })
 }
 
-// TODO: figure out the actual policies
-resource "aws_iam_role_policy" "pod_role_read_write_data_bucket_policy" {
-  name = "AllowReadWriteDataBucket"
+resource "aws_iam_role_policy" "pod_role_list_buckets_policy" {
+  name = "AllowListBuckets"
   role = aws_iam_role.pod_role.name
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Effect = "Allow",
-      Action = [
-        "s3:PutObject",
-        "s3:GetObject"
-      ],
-      Resource = "arn:aws:s3:::*/*"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "pod_role_send_emails_policy" {
-  name = "AllowSendEmails"
-  role = aws_iam_role.pod_role.name
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = "ses:SendEmail",
+      Action = "s3:ListAllMyBuckets",
       Resource = "*"
     }]
   })

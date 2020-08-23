@@ -102,6 +102,26 @@ elif [[ "${command}" == *-layer3 ]]; then
     delete_environment ${stateKey}
   fi
 
+elif [[ "${command}" == "update-kubeconfig" ]]; then
+  terraformDataPath=$(pwd)/.terraform
+
+  layer1StateKey=$(get_layer1_state_key)
+  activate_environment ${layer1StateKey} ${TerraformModulesPath}/layer1
+  pushd terraform/layer1
+  kubernetesDeploymentRoleArn=$(TF_DATA_DIR=${terraformDataPath} terraform output kubernetes_deployment_role_arn)
+  popd
+
+  layer2StateKey=$(get_layer2_state_key)
+  activate_environment ${layer2StateKey} ${TerraformModulesPath}/layer2
+  pushd terraform/layer2
+  clusterName=$(TF_DATA_DIR=${terraformDataPath} terraform output cluster_name)
+  popd
+
+  aws eks update-kubeconfig \
+    --name ${clusterName} \
+    --role-arn ${kubernetesDeploymentRoleArn} \
+    --region ${Region}
+
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"
 else

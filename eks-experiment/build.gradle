@@ -22,6 +22,8 @@ bootJar {
 dependencies {
     testImplementation 'junit:junit'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.11.847'
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.11.847'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

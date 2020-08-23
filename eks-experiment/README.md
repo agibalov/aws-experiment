@@ -6,10 +6,12 @@ An AWS EKS hello world.
 * `./tool.sh deploy-layer1` and `./tool.sh undeploy-layer1` to deploy and undeploy Layer 1 resources: DNS zone and Kubernetes deployment role.
 * `./tool.sh deploy-layer2` and `./tool.sh undeploy-layer2` to deploy and undeploy Layer 2 resources: VPC and EKS cluster.
 * `envTag=<EnvTag> ./tool.sh deploy-layer3` and `envTag=<EnvTag>  ./tool.sh undeploy-layer3` to deploy and undeploy Layer 3 resources: Kubernetes deployment, service, DNS records. Make sure to `./gradlew clean bootJar` before deploying Layer 3.
+* `./tool.sh update-kubeconfig` to update your kubectl config. After it you can use `kubectl` to interact with Kubernetes cluster directly: `kubectl get pods`, `kubectl logs <POD> --follow`, etc.
 
 ## Notes
 
 1. You can only interact with EKS cluster if you use the same very role used to create that EKS cluster. If you create a cluster as IAM user A and then decide to set up a build pipeline, it won't have access to the cluster unless you make it use the user A's credentials. The solution is to create a special IAM role (see "kubernetes_deployment_role") and use it to create and then interact with the cluster.  
 2. Because [STS doesn't allow AWS root users to assume roles](https://docs.aws.amazon.com/cli/latest/reference/sts/assume-role.html), you have to use an IAM user credentials when running `tool.sh`.
+3. For Java AWS client authentication to work in this scenario (`WebIdentityTokenCredentialsProvider`), you have to have `aws-java-sdk-sts` as a dependency.  
 3. **Not done:** redirect HTTP -> HTTPS.
 4. **Not done:** CloudWatch logs.
