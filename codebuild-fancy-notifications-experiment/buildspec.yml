@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      java: openjdk8
+      nodejs: 12.x
   build:
     commands:
       - export ENV_TAG=${CODEBUILD_WEBHOOK_HEAD_REF##*/}
