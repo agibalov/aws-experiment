@@ -48,6 +48,7 @@ Resources:
         Type: GITHUB
         Location: https://github.com/agibalov/aws-experiment.git
         BuildSpec: codebuild-fancy-notifications-experiment/buildspec.yml
+      SourceVersion: !Ref BranchName
       Triggers:
         Webhook: true
         FilterGroups:
