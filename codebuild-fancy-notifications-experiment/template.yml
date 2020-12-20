@@ -53,6 +53,8 @@ Resources:
         FilterGroups:
           - - Type: EVENT
               Pattern: PUSH
+            - Type: HEAD_REF
+              Pattern: !Ref BranchName
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED

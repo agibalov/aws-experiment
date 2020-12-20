@@ -15,7 +15,7 @@ undeploy_stack() {
 }
 
 if [[ "${command}" == "deploy" ]]; then
-  branch=${$2:?not set or empty}
+  branch=${2:?not set or empty}
   aws cloudformation deploy \
     --template-file template.yml \
     --stack-name ${StackName} \
