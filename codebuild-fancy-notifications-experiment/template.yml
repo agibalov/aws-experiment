@@ -101,12 +101,40 @@ Resources:
             - FAILED
             - STOPPED
       Targets:
-        - Id: BuildNotificationsTopicTarget
-          Arn: !Ref BuildNotificationsTopic
-          InputTransformer:
-            InputPathsMap:
-              buildId: $.detail.build-id
-              projectName: $.detail.project-name
-              buildStatus: $.detail.build-status
-            InputTemplate: |
-              "Build '<buildId>' for build project '<projectName>' has reached the build status of '<buildStatus>'."
+        - Id: lambda
+          Arn: !GetAtt NotificationsLambda.Arn
+
+  NotificationsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  NotificationsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt NotificationsLambdaRole.Arn
+      Runtime: nodejs12.x
+      Timeout: 50
+      MemorySize: 128
+      Code:
+        ZipFile: |
+          exports.handler = function (event, context, callback) {
+            console.log(`hello ${new Date()}`, JSON.stringify(event, null, 2));
+          };
