@@ -104,6 +104,14 @@ Resources:
         - Id: lambda
           Arn: !GetAtt NotificationsLambda.Arn
 
+  EventsAmazonAwsComCallNotificationsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NotificationsLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
+
   NotificationsLambdaRole:
     Type: AWS::IAM::Role
     Properties:
