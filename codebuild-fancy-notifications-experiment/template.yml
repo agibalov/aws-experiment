@@ -149,7 +149,7 @@ Resources:
                 Logs: ${event['detail']['additional-information']['logs']['deep-link']}
 
                 Some static text here
-              `.replace(/^(\s+)/gm, '')
+              `.replace(/^[^\n](\s+)/gm, '')
             }).promise();
           };
 
