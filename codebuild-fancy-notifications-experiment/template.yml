@@ -31,7 +31,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
-                Resource: !GetAtt ProjectLogGroup.Arn
+                Resource: '*'
 
   Project:
     Type: AWS::CodeBuild::Project
@@ -61,30 +61,6 @@ Resources:
           Status: ENABLED
           GroupName: !Ref ProjectLogGroup
 
-  BuildNotificationsTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      Subscription:
-        - Endpoint: andrey.agibalov@gmail.com
-          Protocol: email
-
-  BuildNotificationsTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      Topics:
-        - !Ref BuildNotificationsTopic
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Sid: AllowCloudwatchPublish
-            Effect: Allow
-            Principal:
-              Service:
-                - events.amazonaws.com
-            Action:
-              - sns:Publish
-            Resource: !Ref BuildNotificationsTopic
-
   ProjectBuildStateChangeRule:
     Type: AWS::Events::Rule
     Properties:
@@ -105,13 +81,19 @@ Resources:
         - Id: lambda
           Arn: !GetAtt NotificationsLambda.Arn
 
-  EventsAmazonAwsComCallNotificationsLambdaPermission:
-    Type: AWS::Lambda::Permission
+#  EventsAmazonAwsComCallNotificationsLambdaPermission:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref NotificationsLambda
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
+
+  NotificationLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
     Properties:
-      FunctionName: !Ref NotificationsLambda
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
+      LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
+      RetentionInDays: 1
 
   NotificationsLambdaRole:
     Type: AWS::IAM::Role
@@ -132,7 +114,8 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !GetAtt ProjectLogGroup.Arn
+                Resource:
+                  - '*'
 
   NotificationsLambda:
     Type: AWS::Lambda::Function
@@ -140,7 +123,7 @@ Resources:
       Handler: index.handler
       Role: !GetAtt NotificationsLambdaRole.Arn
       Runtime: nodejs12.x
-      Timeout: 50
+      Timeout: 60
       MemorySize: 128
       Code:
         ZipFile: |
