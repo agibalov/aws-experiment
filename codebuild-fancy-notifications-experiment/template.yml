@@ -144,7 +144,7 @@ Resources:
               Message: `
                 Time: ${event['time']}
                 Project name: ${event['detail']['project-name']}
-                Build ID: ${event['detail]['build-id']}
+                Build ID: ${event['detail']['build-id']}
                 Build status: ${event['detail']['build-status']}
                 Logs: ${event['detail']['logs']['deep-link']}
 
