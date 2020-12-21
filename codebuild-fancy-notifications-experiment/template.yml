@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  BranchName:
+    Type: String
+
+Resources:
+  ProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: DummyProjectLogGroup
+      RetentionInDays: 1
+
+  ProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowWriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: '*'
+
+  Project:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: DummyProject
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:3.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: codebuild-fancy-notifications-experiment/buildspec.yml
+      SourceVersion: !Ref BranchName
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PUSH
+            - Type: HEAD_REF
+              Pattern: !Ref BranchName
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref ProjectLogGroup
+
+  ProjectBuildStateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.codebuild
+        detail-type:
+          - CodeBuild Build State Change
+        detail:
+          project-name:
+            - !Ref Project
+          build-status:
+            - SUCCEEDED
+            - FAILED
+      Targets:
+        - Id: lambda
+          Arn: !GetAtt NotificationsLambda.Arn
+
+  EventsAmazonAwsComCallNotificationsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NotificationsLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
+
+  NotificationLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
+      RetentionInDays: 1
+
+  NotificationsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLogsAndNotifications
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationsTopic
+
+  NotificationsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt NotificationsLambdaRole.Arn
+      Runtime: nodejs12.x
+      Timeout: 60
+      MemorySize: 128
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref NotificationsTopic
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const SNS = new AWS.SNS();
+
+          exports.handler = async function (event, context, callback) {
+            console.log(`hello ${new Date()}`, JSON.stringify(event, null, 2));
+            await SNS.publish({
+              TopicArn: process.env.TOPIC_ARN,
+              MessageStructure: 'text',
+              Subject: `Build ${event['detail']['build-status']}`,
+              Message: `
+                Time: ${event['time']}
+                Project name: ${event['detail']['project-name']}
+                Build ID: ${event['detail']['build-id']}
+                Build status: ${event['detail']['build-status']}
+
+                Logs: ${event['detail']['additional-information']['logs']['deep-link']}
+
+                Some static text here
+              `.replace(/^[^\n](\s+)/gm, '')
+            }).promise();
+          };
+
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: andrey.agibalov@gmail.com
+          Protocol: email
