@@ -146,7 +146,7 @@ Resources:
                 Project name: ${event['detail']['project-name']}
                 Build ID: ${event['detail']['build-id']}
                 Build status: ${event['detail']['build-status']}
-                Logs: ${event['detail']['logs']['deep-link']}
+                Logs: ${event['detail']['additional-information']['logs']['deep-link']}
 
                 <p>paragraph</p>
                 <h1>header</h1>
