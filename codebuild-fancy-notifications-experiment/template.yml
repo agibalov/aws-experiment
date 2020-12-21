@@ -81,13 +81,13 @@ Resources:
         - Id: lambda
           Arn: !GetAtt NotificationsLambda.Arn
 
-#  EventsAmazonAwsComCallNotificationsLambdaPermission:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !Ref NotificationsLambda
-#      Action: lambda:InvokeFunction
-#      Principal: events.amazonaws.com
-#      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
+  EventsAmazonAwsComCallNotificationsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NotificationsLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ProjectBuildStateChangeRule.Arn
 
   NotificationLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -106,7 +106,7 @@ Resources:
             Service: lambda.amazonaws.com
           Action: sts:AssumeRole
       Policies:
-        - PolicyName: WriteLogs
+        - PolicyName: AllowLogsAndNotifications
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -114,8 +114,11 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource:
-                  - '*'
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationsTopic
 
   NotificationsLambda:
     Type: AWS::Lambda::Function
@@ -125,8 +128,35 @@ Resources:
       Runtime: nodejs12.x
       Timeout: 60
       MemorySize: 128
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref NotificationsTopic
       Code:
         ZipFile: |
-          exports.handler = function (event, context, callback) {
+          const AWS = require('aws-sdk');
+          const SNS = new AWS.SNS();
+
+          exports.handler = async function (event, context, callback) {
             console.log(`hello ${new Date()}`, JSON.stringify(event, null, 2));
+            const detail = event.detail;
+            await SNS.publish({
+              TopicArn: process.env.TOPIC_ARN,
+              Message: `
+                Time: ${event['time']}
+                Project name: ${event['detail']['project-name']}
+                Build ID: ${event['detail]['build-id']}
+                Build status: ${event['detail']['build-status']}
+                Logs: ${event['detail']['logs']['deep-link']}
+
+                <p>paragraph</p>
+                <h1>header</h1>
+              `
+            }).promise();
           };
+
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: andrey.agibalov@gmail.com
+          Protocol: email
