@@ -73,10 +73,8 @@ Resources:
           project-name:
             - !Ref Project
           build-status:
-            - IN_PROGRESS
             - SUCCEEDED
             - FAILED
-            - STOPPED
       Targets:
         - Id: lambda
           Arn: !GetAtt NotificationsLambda.Arn
@@ -138,19 +136,20 @@ Resources:
 
           exports.handler = async function (event, context, callback) {
             console.log(`hello ${new Date()}`, JSON.stringify(event, null, 2));
-            const detail = event.detail;
             await SNS.publish({
               TopicArn: process.env.TOPIC_ARN,
+              MessageStructure: 'text',
+              Subject: `Build ${event['detail']['build-status']}`,
               Message: `
                 Time: ${event['time']}
                 Project name: ${event['detail']['project-name']}
                 Build ID: ${event['detail']['build-id']}
                 Build status: ${event['detail']['build-status']}
+
                 Logs: ${event['detail']['additional-information']['logs']['deep-link']}
 
-                <p>paragraph</p>
-                <h1>header</h1>
-              `
+                Some static text here
+              `.replace(/^(\s+)/gm, '')
             }).promise();
           };
 

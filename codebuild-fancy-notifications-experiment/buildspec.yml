@@ -6,5 +6,4 @@ phases:
       nodejs: 12.x
   build:
     commands:
-      - export ENV_TAG=${CODEBUILD_WEBHOOK_HEAD_REF##*/}
-      - echo "hello world! EnvTag=${ENV_TAG}"
+      - echo "hello world! $(date)"
