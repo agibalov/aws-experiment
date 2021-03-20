@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  SshPublicKey:
+    Type: String
+
+Outputs:
+  ServerHost:
+    Value: !Sub "${Server.ServerId}.server.transfer.${AWS::Region}.amazonaws.com"
+  UserName:
+    Value: !GetAtt User.UserName
+  BucketName:
+    Value: !Ref Bucket
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  Server:
+    Type: AWS::Transfer::Server
+    Properties:
+      Domain: S3
+      EndpointType: PUBLIC
+      IdentityProviderType: SERVICE_MANAGED
+      Protocols:
+        - SFTP
+
+  User:
+    Type: AWS::Transfer::User
+    Properties:
+      Role: !GetAtt UserRole.Arn
+      ServerId: !GetAtt Server.ServerId
+      UserName: dummyuser
+      SshPublicKeys:
+        - !Ref SshPublicKey
+      HomeDirectoryMappings:
+        - Entry: /
+          Target: !Sub "/${Bucket}/${!transfer:UserName}"
+      HomeDirectoryType: LOGICAL
+
+  UserRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: transfer.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowBucketAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt Bucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "${Bucket.Arn}/*"
