@@ -52,19 +52,14 @@ elif [[ "${command}" == "undeploy" ]]; then
   bucketName=$(get_stack_output ${stackName} "BucketName")
   aws s3 rm s3://${bucketName} --recursive
 
-  undeploy_stack ${appStackName}
+  undeploy_stack ${stackName}
 
-elif [[ "${command}" == "test" ]]; then
+elif [[ "${command}" == "sftp" ]]; then
   stackName=$(get_stack_name)
   serverHost=$(get_stack_output ${stackName} "ServerHost")
   userName=$(get_stack_output ${stackName} "UserName")
-  bucketName=$(get_stack_output ${stackName} "BucketName")
 
-  rm -f batch
-  echo "cd ${bucketName}" >>batch
-  echo "ls" >> batch
-
-  sftp -i ${SshPrivateKeyFileName} -b batch ${userName}@${serverHost}
+  sftp -i ${SshPrivateKeyFileName} ${userName}@${serverHost}
 
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"

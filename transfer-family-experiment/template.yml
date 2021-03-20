@@ -33,6 +33,10 @@ Resources:
       UserName: dummyuser
       SshPublicKeys:
         - !Ref SshPublicKey
+      HomeDirectoryMappings:
+        - Entry: /
+          Target: !Sub "/${Bucket}/${!transfer:UserName}"
+      HomeDirectoryType: LOGICAL
 
   UserRole:
     Type: AWS::IAM::Role
@@ -59,4 +63,3 @@ Resources:
                   - s3:GetObject
                   - s3:DeleteObject
                 Resource: !Sub "${Bucket.Arn}/*"
-
