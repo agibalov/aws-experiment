@@ -7,8 +7,6 @@ Parameters:
 Outputs:
   ServerHost:
     Value: !Sub "${Server.ServerId}.server.transfer.${AWS::Region}.amazonaws.com"
-  UserName:
-    Value: !GetAtt User.UserName
   BucketName:
     Value: !Ref Bucket
 

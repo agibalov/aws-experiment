@@ -5,8 +5,14 @@ An AWS Transfer Family hello world. An SFTP facade to an S3 bucket.
 ## How to deploy and undeploy
 
 * `./tool.sh generate-key` to generate an SSH key for the SFTP user. 
-* `./tool.sh deploy` to deploy.
+* `./tool.sh deploy-basic` to deploy the server with service-managed authentication.
+* `./tool.sh deploy-custom-auth` to deploy the server with custom authentication.
 * `./tool.sh undeploy` to undeploy.
+
+```
+TODO: sftp-key
+TODO: sftp-password
+```
 
 ## How to play with it
 

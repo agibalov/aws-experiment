@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  User1SshPublicKey:
+    Type: String
+  User2SshPublicKey:
+    Type: String
+
+Outputs:
+  ServerHost:
+    Value: !Sub "${Server.ServerId}.server.transfer.${AWS::Region}.amazonaws.com"
+  User1UserName:
+    Value: user1
+  User2UserName:
+    Value: user2
+  BucketName:
+    Value: !Ref Bucket
+  RestApiId:
+    Value: !Ref IdentityProviderRestApi
+  RestApiStageName:
+    Value: !Ref IdentityProviderRestApiStage
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  Server:
+    Type: AWS::Transfer::Server
+    Properties:
+      Domain: S3
+      EndpointType: PUBLIC
+      IdentityProviderType: API_GATEWAY
+      IdentityProviderDetails:
+        InvocationRole: !GetAtt TransferServerIdentityProviderInvocationRole.Arn
+        Url: !Sub "https://${IdentityProviderRestApi}.execute-api.${AWS::Region}.amazonaws.com/${IdentityProviderRestApiStage}"
+      Protocols:
+        - SFTP
+
+  UserRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: transfer.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowBucketAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt Bucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "${Bucket.Arn}/*"
+
+  TransferServerIdentityProviderInvocationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: transfer.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowExecuteApi
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${IdentityProviderRestApi}/${IdentityProviderRestApiStage}/GET/*"
+        - PolicyName: AllowReadApi
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: apigateway:GET
+                Resource: '*'
+
+  IdentityProviderRestApiIntegrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowLambdaInvokeFunction
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt IdentityProviderApiHandlerLambdaFunction.Arn
+
+  IdentityProviderRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: IdentityProvider
+      Body:
+        swagger: "2.0"
+        paths:
+          /servers/{serverId}/users/{username}/config:
+            get:
+              parameters:
+                - name: serverId
+                  in: path
+                  required: true
+                  type: string
+                - name: username
+                  in: path
+                  required: true
+                  type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IdentityProviderApiHandlerLambdaFunction.Arn}/invocations"
+                credentials: !GetAtt IdentityProviderRestApiIntegrationRole.Arn
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+
+  IdentityProviderRestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref IdentityProviderRestApi
+
+  IdentityProviderRestApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref IdentityProviderRestApi
+      DeploymentId: !Ref IdentityProviderRestApiDeployment
+      StageName: main
+
+  IdentityProviderApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${IdentityProviderApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  IdentityProviderApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+
+  IdentityProviderApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: IdentityProviderApiHandler
+      Handler: index.handler
+      Role: !GetAtt IdentityProviderApiHandlerRole.Arn
+      Environment:
+        Variables:
+          USER_ROLE_ARN: !GetAtt UserRole.Arn
+          BUCKET_NAME: !Ref Bucket
+          BUCKET_ARN: !GetAtt Bucket.Arn
+          # SERVER_ID: !GetAtt Server.ServerId
+          USER1_USERNAME: user1
+          USER1_SSH_PUBLIC_KEY: !Ref User1SshPublicKey
+          USER1_PASSWORD: qwerty
+          USER2_USERNAME: user2
+          USER2_SSH_PUBLIC_KEY: !Ref User1SshPublicKey
+          USER2_PASSWORD: asdfgh
+      Code:
+        # First this gets called without password, and I have a chance to return a public key
+        # if the client's private key is OK, they get in
+        # if the client's private key is NOT OK, they're supposed to provide a password
+        # and then this gets called once again - this time with password
+        ZipFile: |
+          const users = {
+            [process.env.USER1_USERNAME]: {
+              publicKey: process.env.USER1_SSH_PUBLIC_KEY,
+              password: process.env.USER1_PASSWORD
+            },
+            [process.env.USER2_USERNAME]: {
+              publicKey: process.env.USER2_SSH_PUBLIC_KEY,
+              password: process.env.USER2_PASSWORD
+            }
+          };
+
+          exports.handler = async (event, context) => {
+            const serverId = event.pathParameters.serverId;
+            const username = event.pathParameters.username;
+            const password = event.headers.Password;
+            const sourceIp = event.headers.SourceIP;
+            console.log('Request: ', JSON.stringify({
+              serverId,
+              username,
+              password,
+              sourceIp
+            }));
+
+            // TODO: definitely should check serverId, but can't pass it to lambda because
+            // of circular dependency: server -> api -> lambda -> serverId
+            /*if (serverId !== process.env.SERVER_ID) {
+              console.log(`Unknown server '${serverId}'`);
+              return ok({});
+            }*/
+
+            const user = users[username];
+            if (user === undefined) {
+              console.log(`Unknown user '${username}'`);
+              return ok({});
+            }
+
+            const responseBody = {
+              Role: process.env.USER_ROLE_ARN,
+              HomeDirectoryType: 'LOGICAL',
+              HomeDirectoryDetails: JSON.stringify([{
+                Entry: '/',
+                Target: `/${process.env.BUCKET_NAME}/\${transfer:UserName}`
+              }])
+            };
+
+            if (password === undefined) {
+              if (user.publicKey !== undefined) {
+                console.log(`Password is not specified, but user has a public key`);
+                responseBody.PublicKeys = [ user.publicKey ];
+                return response(responseBody);
+              }
+              console.log(`Password is not specified and user has no public key`);
+              return response({});
+            } else if (password === user.password) {
+              console.log(`Password is specified and correct`);
+              return response(responseBody);
+            }
+
+            console.log(`Password is specified, but incorrect`);
+            return response({});
+          };
+
+          function response(body) {
+            return {
+              statusCode: 200,
+              body: JSON.stringify(body)
+            };
+          }
+      Runtime: nodejs12.x
+      Timeout: 60
+      MemorySize: 128
