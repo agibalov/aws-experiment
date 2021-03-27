@@ -36,15 +36,33 @@ get_stack_output() {
 if [[ "${command}" == "generate-key" ]]; then
   ssh-keygen -t rsa -b 4096 -N '' -f ${SshPrivateKeyFileName}
 
-elif [[ "${command}" == "deploy" ]]; then
+elif [[ "${command}" == "deploy-basic" ]]; then
   stackName=$(get_stack_name)
   aws cloudformation deploy \
-    --template-file template.yml \
+    --template-file template-basic.yml \
     --stack-name ${stackName} \
     --capabilities CAPABILITY_NAMED_IAM \
     --region ${Region} \
     --parameter-overrides \
     SshPublicKey="$(cat ${SshPublicKeyFileName})"
+
+elif [[ "${command}" == "deploy-custom-auth" ]]; then
+  stackName=$(get_stack_name)
+  aws cloudformation deploy \
+    --template-file template-custom-auth.yml \
+    --stack-name ${stackName} \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region ${Region} \
+    --parameter-overrides \
+    User1SshPublicKey="$(cat ${SshPublicKeyFileName})" \
+    User2SshPublicKey="$(cat ${SshPublicKeyFileName})"
+
+  restApiId=$(get_stack_output ${stackName} "RestApiId")
+  restApiStageName=$(get_stack_output ${stackName} "RestApiStageName")
+  aws apigateway create-deployment \
+    --rest-api-id ${restApiId} \
+    --stage-name ${restApiStageName} \
+    --region ${Region}
 
 elif [[ "${command}" == "undeploy" ]]; then
   stackName=$(get_stack_name)
@@ -54,12 +72,19 @@ elif [[ "${command}" == "undeploy" ]]; then
 
   undeploy_stack ${stackName}
 
-elif [[ "${command}" == "sftp" ]]; then
+elif [[ "${command}" == "sftp-key" ]]; then
+  userName=${2:?not set or empty}
   stackName=$(get_stack_name)
   serverHost=$(get_stack_output ${stackName} "ServerHost")
-  userName=$(get_stack_output ${stackName} "UserName")
 
   sftp -i ${SshPrivateKeyFileName} ${userName}@${serverHost}
+
+elif [[ "${command}" == "sftp-password" ]]; then
+  userName=${2:?not set or empty}
+  stackName=$(get_stack_name)
+  serverHost=$(get_stack_output ${stackName} "ServerHost")
+
+  sftp ${userName}@${serverHost}
 
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"
