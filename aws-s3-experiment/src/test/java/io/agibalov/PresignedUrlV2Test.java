@@ -58,10 +58,10 @@ public class PresignedUrlV2Test {
                         .getObjectRequest(GetObjectRequest.builder()
                                 .bucket(TEST_BUCKET_NAME)
                                 .key("1.txt")
-                                /*.responseContentDisposition(ContentDisposition.builder("attachment")
+                                .responseContentDisposition(ContentDisposition.builder("attachment")
                                         .filename("custom123.txt")
                                         .build()
-                                        .toString())*/
+                                        .toString())
                                 .build())
                         .build());
         URL url = presignedGetObjectRequest.url();

@@ -12,7 +12,7 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile group: 'software.amazon.awssdk', name: 's3', version: '2.16.74'
-    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.774' // LocalStack needs this
+    testCompile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.774'
     testCompile group: 'org.testcontainers', name: 'testcontainers', version: '1.15.3'
     testCompile group: 'org.testcontainers', name: 'localstack', version: '1.15.3'
     testCompile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'

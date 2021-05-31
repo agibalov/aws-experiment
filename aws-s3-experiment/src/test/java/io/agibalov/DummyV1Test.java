@@ -8,7 +8,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
@@ -23,6 +22,7 @@ public class DummyV1Test {
     public void basicScenario() throws IOException {
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
 
         PutObjectResult putObjectResult = amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
         String eTag1 = putObjectResult.getETag();
@@ -42,12 +42,7 @@ public class DummyV1Test {
         assertEquals(1, objectSummaries.size());
         assertEquals("1.txt", objectSummaries.get(0).getKey());
 
-        List<DeleteObjectsRequest.KeyVersion> keys = objectSummaries.stream()
-                .map(s -> new DeleteObjectsRequest.KeyVersion(s.getKey()))
-                .collect(Collectors.toList());
-        amazonS3.deleteObjects(new DeleteObjectsRequest(TEST_BUCKET_NAME)
-                .withKeys(keys));
-
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
         amazonS3.deleteBucket(TEST_BUCKET_NAME);
     }
 
@@ -62,6 +57,7 @@ public class DummyV1Test {
                 TEST_BUCKET_NAME,
                 new BucketVersioningConfiguration()
                         .withStatus(BucketVersioningConfiguration.ENABLED)));
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
 
         PutObjectResult putObjectResult1 = amazonS3.putObject(
                 TEST_BUCKET_NAME, "1.txt", "hello there version one");
@@ -87,11 +83,7 @@ public class DummyV1Test {
         assertTrue(versionSummaries.stream().anyMatch(s -> s.getVersionId().equals(version1)));
         assertTrue(versionSummaries.stream().anyMatch(s -> s.getVersionId().equals(version2)));
 
-        amazonS3.deleteObjects(new DeleteObjectsRequest(TEST_BUCKET_NAME)
-            .withKeys(versionSummaries.stream()
-                    .map(s -> new DeleteObjectsRequest.KeyVersion(s.getKey(), s.getVersionId()))
-                    .collect(Collectors.toList())));
-
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
         amazonS3.deleteBucket(TEST_BUCKET_NAME);
     }
 
@@ -102,6 +94,7 @@ public class DummyV1Test {
 
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
 
         amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
 
@@ -123,12 +116,8 @@ public class DummyV1Test {
         assertEquals(1, objectSummaries.size());
         assertEquals("1.txt", objectSummaries.get(0).getKey());
 
-        List<DeleteObjectsRequest.KeyVersion> keys = objectSummaries.stream()
-                .map(s -> new DeleteObjectsRequest.KeyVersion(s.getKey()))
-                .collect(Collectors.toList());
-        amazonS3.deleteObjects(new DeleteObjectsRequest(TEST_BUCKET_NAME)
-                .withKeys(keys));
-
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
         amazonS3.deleteBucket(TEST_BUCKET_NAME);
     }
+
 }

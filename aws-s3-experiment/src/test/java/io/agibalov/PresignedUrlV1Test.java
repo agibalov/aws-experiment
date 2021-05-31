@@ -32,6 +32,7 @@ public class PresignedUrlV1Test {
     public void canGenerateAPresignedDownloadLink() {
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
 
         amazonS3.putObject(TEST_BUCKET_NAME, "1.txt", "hello there");
         URL url = amazonS3.generatePresignedUrl(new GeneratePresignedUrlRequest(TEST_BUCKET_NAME, "1.txt")
@@ -56,14 +57,7 @@ public class PresignedUrlV1Test {
         }
         assertEquals("hello there", responseEntity.getBody());
 
-        ObjectListing objectListing = amazonS3.listObjects(TEST_BUCKET_NAME);
-        List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
-        List<DeleteObjectsRequest.KeyVersion> keys = objectSummaries.stream()
-                .map(s -> new DeleteObjectsRequest.KeyVersion(s.getKey()))
-                .collect(Collectors.toList());
-        amazonS3.deleteObjects(new DeleteObjectsRequest(TEST_BUCKET_NAME)
-                .withKeys(keys));
-
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
         amazonS3.deleteBucket(TEST_BUCKET_NAME);
     }
 
@@ -71,6 +65,7 @@ public class PresignedUrlV1Test {
     public void canGenerateAPresignedUploadLink() throws IOException {
         AmazonS3 amazonS3 = amazonS3Provider.getAmazonS3();
         amazonS3.createBucket(TEST_BUCKET_NAME);
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
 
         URL url = amazonS3.generatePresignedUrl(new GeneratePresignedUrlRequest(TEST_BUCKET_NAME, "1.txt")
                 .withMethod(com.amazonaws.HttpMethod.PUT)
@@ -95,14 +90,7 @@ public class PresignedUrlV1Test {
         String contentString = IOUtils.toString(s3Object.getObjectContent());
         assertEquals("hello world!", contentString);
 
-        ObjectListing objectListing = amazonS3.listObjects(TEST_BUCKET_NAME);
-        List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
-        List<DeleteObjectsRequest.KeyVersion> keys = objectSummaries.stream()
-                .map(s -> new DeleteObjectsRequest.KeyVersion(s.getKey()))
-                .collect(Collectors.toList());
-        amazonS3.deleteObjects(new DeleteObjectsRequest(TEST_BUCKET_NAME)
-                .withKeys(keys));
-
+        S3V1Utils.clearBucket(amazonS3, TEST_BUCKET_NAME);
         amazonS3.deleteBucket(TEST_BUCKET_NAME);
     }
 }
