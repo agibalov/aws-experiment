@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
 
-public class DummyTest {
+public class DummyV1Test {
     private final static String TEST_BUCKET_NAME = "weufhiewurhi23uhr23r23";
 
     @Rule

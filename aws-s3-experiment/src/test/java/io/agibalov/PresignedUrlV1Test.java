@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 
-public class PresignedUrlTest {
+public class PresignedUrlV1Test {
     private final static String TEST_BUCKET_NAME = "weufhiewurhi23uhr23r23";
 
     @Rule

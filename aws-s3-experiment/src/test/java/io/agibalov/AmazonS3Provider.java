@@ -12,6 +12,14 @@ import org.junit.runners.model.Statement;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
+import java.net.URI;
 
 public class AmazonS3Provider implements TestRule {
     private ApiProvider apiProvider;
@@ -26,6 +34,14 @@ public class AmazonS3Provider implements TestRule {
 
     public AmazonS3 getAmazonS3() {
         return apiProvider.getAmazonS3();
+    }
+
+    public S3Client getS3Client() {
+        return apiProvider.getS3Client();
+    }
+
+    public S3Presigner getS3Presigner() {
+        return apiProvider.getS3Presigner();
     }
 
     @Override
@@ -62,6 +78,8 @@ public class AmazonS3Provider implements TestRule {
     public interface ApiProvider {
         void start();
         AmazonS3 getAmazonS3();
+        S3Client getS3Client();
+        S3Presigner getS3Presigner();
         void stop();
     }
 
@@ -72,7 +90,7 @@ public class AmazonS3Provider implements TestRule {
         private GenericContainer container;
 
         public MinioApiProvider() {
-            container = new GenericContainer("minio/minio:RELEASE.2020-05-01T22-19-14Z")
+            container = new GenericContainer("minio/minio:RELEASE.2021-05-27T22-06-31Z")
                     .withExposedPorts(9000)
                     .withEnv("MINIO_ACCESS_KEY", ACCESS_KEY)
                     .withEnv("MINIO_SECRET_KEY", SECRET_KEY)
@@ -87,14 +105,44 @@ public class AmazonS3Provider implements TestRule {
 
         @Override
         public AmazonS3 getAmazonS3() {
-            String ipAddress = container.getContainerIpAddress();
-            int mappedPort = container.getMappedPort(9000);
-            String endpointUrl = String.format("http://%s:%d", ipAddress, mappedPort);
             return AmazonS3ClientBuilder.standard()
-                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpointUrl, "us-east-1"))
+                    .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
+                            getEndpointUri().toString(), Region.US_EAST_1.toString()))
                     .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(ACCESS_KEY, SECRET_KEY)))
                     .enablePathStyleAccess()
                     .build();
+        }
+
+        @Override
+        public S3Client getS3Client() {
+            return S3Client.builder()
+                    .endpointOverride(getEndpointUri())
+                    .region(Region.US_EAST_1)
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .build();
+        }
+
+        @Override
+        public S3Presigner getS3Presigner() {
+            return S3Presigner.builder()
+                    .endpointOverride(getEndpointUri())
+                    .region(Region.US_EAST_1)
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build())
+                    .build();
+        }
+
+        private URI getEndpointUri() {
+            String ipAddress = container.getContainerIpAddress();
+            int mappedPort = container.getMappedPort(9000);
+            return URI.create(String.format("http://%s:%d", ipAddress, mappedPort));
         }
 
         @Override
@@ -122,6 +170,30 @@ public class AmazonS3Provider implements TestRule {
         }
 
         @Override
+        public S3Client getS3Client() {
+            return S3Client.builder()
+                    .endpointOverride(localStackContainer.getEndpointOverride(LocalStackContainer.Service.S3))
+                    .region(Region.US_EAST_1)
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(
+                                    localStackContainer.getAccessKey(),
+                                    localStackContainer.getSecretKey())))
+                    .build();
+        }
+
+        @Override
+        public S3Presigner getS3Presigner() {
+            return S3Presigner.builder()
+                    .endpointOverride(localStackContainer.getEndpointOverride(LocalStackContainer.Service.S3))
+                    .region(Region.US_EAST_1)
+                    .credentialsProvider(StaticCredentialsProvider.create(
+                            AwsBasicCredentials.create(
+                                    localStackContainer.getAccessKey(),
+                                    localStackContainer.getSecretKey())))
+                    .build();
+        }
+
+        @Override
         public void stop() {
             localStackContainer.stop();
         }
@@ -136,6 +208,20 @@ public class AmazonS3Provider implements TestRule {
         public AmazonS3 getAmazonS3() {
             return AmazonS3ClientBuilder.standard()
                     .withRegion(Regions.US_EAST_1)
+                    .build();
+        }
+
+        @Override
+        public S3Client getS3Client() {
+            return S3Client.builder()
+                    .region(Region.US_EAST_1)
+                    .build();
+        }
+
+        @Override
+        public S3Presigner getS3Presigner() {
+            return S3Presigner.builder()
+                    .region(Region.US_EAST_1)
                     .build();
         }
 
