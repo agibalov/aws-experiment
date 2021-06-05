@@ -6,6 +6,14 @@ import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import io.agibalov.v1.BucketV1CleanUpStrategy;
+import io.agibalov.v1.ObjectsBucketV1CleanUpStrategy;
+import io.agibalov.v1.S3BucketV1;
+import io.agibalov.v1.VersionsBucketV1CleanUpStrategy;
+import io.agibalov.v2.BucketV2CleanUpStrategy;
+import io.agibalov.v2.ObjectsBucketV2CleanUpStrategy;
+import io.agibalov.v2.S3BucketV2;
+import io.agibalov.v2.VersionsBucketV2CleanUpStrategy;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
@@ -20,6 +28,7 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
+import java.util.UUID;
 
 public class AmazonS3Provider implements TestRule {
     private ApiProvider apiProvider;
@@ -42,6 +51,14 @@ public class AmazonS3Provider implements TestRule {
 
     public S3Presigner getS3Presigner() {
         return apiProvider.getS3Presigner();
+    }
+
+    public S3BucketV1 getS3BucketV1() {
+        return new S3BucketV1(getAmazonS3(), UUID.randomUUID().toString(), apiProvider.getBucketV1CleanUpStrategy());
+    }
+
+    public S3BucketV2 getS3BucketV2() {
+        return new S3BucketV2(getS3Client(), UUID.randomUUID().toString(), apiProvider.getBucketV2CleanUpStrategy());
     }
 
     @Override
@@ -80,6 +97,8 @@ public class AmazonS3Provider implements TestRule {
         AmazonS3 getAmazonS3();
         S3Client getS3Client();
         S3Presigner getS3Presigner();
+        BucketV1CleanUpStrategy getBucketV1CleanUpStrategy();
+        BucketV2CleanUpStrategy getBucketV2CleanUpStrategy();
         void stop();
     }
 
@@ -139,6 +158,18 @@ public class AmazonS3Provider implements TestRule {
                     .build();
         }
 
+        @Override
+        public BucketV1CleanUpStrategy getBucketV1CleanUpStrategy() {
+            // Minio doesn't support versioning
+            return new ObjectsBucketV1CleanUpStrategy();
+        }
+
+        @Override
+        public BucketV2CleanUpStrategy getBucketV2CleanUpStrategy() {
+            // Minio doesn't support versioning
+            return new ObjectsBucketV2CleanUpStrategy();
+        }
+
         private URI getEndpointUri() {
             String ipAddress = container.getContainerIpAddress();
             int mappedPort = container.getMappedPort(9000);
@@ -164,7 +195,8 @@ public class AmazonS3Provider implements TestRule {
         @Override
         public AmazonS3 getAmazonS3() {
             return AmazonS3ClientBuilder.standard()
-                    .withEndpointConfiguration(localStackContainer.getEndpointConfiguration(LocalStackContainer.Service.S3))
+                    .withEndpointConfiguration(localStackContainer
+                            .getEndpointConfiguration(LocalStackContainer.Service.S3))
                     .withCredentials(localStackContainer.getDefaultCredentialsProvider())
                     .build();
         }
@@ -191,6 +223,16 @@ public class AmazonS3Provider implements TestRule {
                                     localStackContainer.getAccessKey(),
                                     localStackContainer.getSecretKey())))
                     .build();
+        }
+
+        @Override
+        public BucketV1CleanUpStrategy getBucketV1CleanUpStrategy() {
+            return new VersionsBucketV1CleanUpStrategy();
+        }
+
+        @Override
+        public BucketV2CleanUpStrategy getBucketV2CleanUpStrategy() {
+            return new VersionsBucketV2CleanUpStrategy();
         }
 
         @Override
@@ -223,6 +265,16 @@ public class AmazonS3Provider implements TestRule {
             return S3Presigner.builder()
                     .region(Region.US_EAST_1)
                     .build();
+        }
+
+        @Override
+        public BucketV1CleanUpStrategy getBucketV1CleanUpStrategy() {
+            return new VersionsBucketV1CleanUpStrategy();
+        }
+
+        @Override
+        public BucketV2CleanUpStrategy getBucketV2CleanUpStrategy() {
+            return new VersionsBucketV2CleanUpStrategy();
         }
 
         @Override
