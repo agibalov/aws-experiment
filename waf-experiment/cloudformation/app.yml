@@ -121,15 +121,52 @@ Resources:
   WebAcl:
     Type: AWS::WAFv2::WebACL
     Properties:
-      DefaultAction:
-        Allow:
-          CustomRequestHandling:
-            InsertHeaders:
-              - Name: MyWafHeader
-                Value: hello there
       Name: MyWebAcl
+      DefaultAction:
+        Allow: {}
       Scope: REGIONAL
       VisibilityConfig:
         CloudWatchMetricsEnabled: true
         MetricName: MyWebAclMetric
-        SampleRequestsEnabled: true
+        SampledRequestsEnabled: true
+      CustomResponseBodies:
+        RateLimitResponseBody:
+          Content: Hey stop it!
+          ContentType: TEXT_PLAIN
+      Rules:
+        - Name: AwsCoreRuleSet
+          Priority: 0
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: MyWebAclCoreRuleSetMetric
+            SampledRequestsEnabled: true
+        - Name: RateLimit
+          Priority: 1
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                ResponseHeaders:
+                  - Name: MyWebAclMessage
+                    Value: That's too much!
+                CustomResponseBodyKey: RateLimitResponseBody
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 100
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: MyWebAclRateLimitMetric
+            SampledRequestsEnabled: true
+
+  WebAclToLoadBalancerAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Ref LoadBalancer
+      WebACLArn: !GetAtt WebAcl.Arn

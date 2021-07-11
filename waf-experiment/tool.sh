@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 Region=us-east-1
 EcsStackName=ecs
 AppStackName=app
@@ -51,6 +49,17 @@ elif [[ "${command}" == "deploy-app" ]]; then
 elif [[ "${command}" == "undeploy-app" ]]; then
   undeploy_stack ${AppStackName}
 
+elif [[ "${command}" == "test" ]]; then
+  rootUrl=$(get_stack_output ${AppStackName} "Url")
+  echo "url: ${rootUrl}"
+
+  i=0
+  while [ $i -ne 100000 ]
+  do
+    i=$(($i+1))
+    echo "$i: $(curl -s -o /dev/null -w "%{http_code}" ${rootUrl})"
+    sleep 0.1
+  done
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"
 fi
