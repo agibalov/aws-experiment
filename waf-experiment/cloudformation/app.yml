@@ -117,3 +117,19 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      DefaultAction:
+        Allow:
+          CustomRequestHandling:
+            InsertHeaders:
+              - Name: MyWafHeader
+                Value: hello there
+      Name: MyWebAcl
+      Scope: REGIONAL
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: MyWebAclMetric
+        SampleRequestsEnabled: true
