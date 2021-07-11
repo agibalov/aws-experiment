@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  EcsStackName:
+    Type: String
+
+Outputs:
+  Url:
+    Value: !Sub "http://${LoadBalancer.DNSName}"
+
+Mappings:
+  ConstMap:
+    singleton:
+      AppContainerName: AppContainer
+      AppContainerPort: 80
+
+Resources:
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-AppLogGroup"
+      RetentionInDays: 1
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: '256'
+      Memory: '512'
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      Family: fargate-app
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: !FindInMap [ "ConstMap", "singleton", "AppContainerName" ]
+          PortMappings:
+            - ContainerPort: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Image: nginx:1.21.1
+
+  EcsService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - LoadBalancerListener
+    Properties:
+      Cluster:
+        Fn::ImportValue: !Sub "${EcsStackName}-EcsCluster"
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Sub "${EcsStackName}-EcsSecurityGroup"
+          Subnets:
+            - Fn::ImportValue: !Sub "${EcsStackName}-Az1PublicSubnet"
+            - Fn::ImportValue: !Sub "${EcsStackName}-Az2PublicSubnet"
+      LoadBalancers:
+        - ContainerName: !FindInMap [ "ConstMap", "singleton", "AppContainerName" ]
+          ContainerPort: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-LoadBalancer"
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${EcsStackName}-AlbSecurityGroup"
+      Subnets:
+        - Fn::ImportValue: !Sub "${EcsStackName}-Az1PublicSubnet"
+        - Fn::ImportValue: !Sub "${EcsStackName}-Az2PublicSubnet"
+      Scheme: internet-facing
+
+  LoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-TargetGroup"
+      VpcId:
+        Fn::ImportValue: !Sub "${EcsStackName}-Vpc"
+      Port: 80
+      Protocol: HTTP
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 2
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 10
+      TargetType: ip
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: MyWebAcl
+      DefaultAction:
+        Allow: {}
+      Scope: REGIONAL
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: MyWebAclMetric
+        SampledRequestsEnabled: true
+      CustomResponseBodies:
+        RateLimitResponseBody:
+          Content: Hey stop it!
+          ContentType: TEXT_PLAIN
+      Rules:
+        - Name: AwsCoreRuleSet
+          Priority: 0
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: MyWebAclCoreRuleSetMetric
+            SampledRequestsEnabled: true
+        - Name: RateLimit
+          Priority: 1
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                ResponseHeaders:
+                  - Name: MyWebAclMessage
+                    Value: That's too much!
+                CustomResponseBodyKey: RateLimitResponseBody
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 100
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: MyWebAclRateLimitMetric
+            SampledRequestsEnabled: true
+
+  WebAclToLoadBalancerAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Ref LoadBalancer
+      WebACLArn: !GetAtt WebAcl.Arn
