@@ -36,13 +36,27 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Cpu: '1024'
       Memory: '2GB'
       ExecutionRoleArn: !Ref TaskExecutionRole
-      Family: fargate-app
+      TaskRoleArn: !Ref TaskRole
+      Family: app
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -57,6 +71,18 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
           Image: !Ref AppImage
+        - Name: xray
+          PortMappings:
+            - ContainerPort: 2000
+              Protocol: tcp
+            - ContainerPort: 2000
+              Protocol: udp
+          Image: amazon/aws-xray-daemon:3.x
+#          Environment:
+#            - Name: AWS_REGION
+#              Value: !Ref AWS::Region
+#          Command:
+#            - --log-level=debug
 
   EcsService:
     Type: AWS::ECS::Service
