@@ -24,10 +24,10 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
-test {
-    useJUnitPlatform()
+bootJar {
+    launchScript()
 }
 
-jar {
-    enabled = true
+test {
+    useJUnitPlatform()
 }
