@@ -72,6 +72,9 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
           Image: !Ref AppImage
+          Environment:
+            - Name: AWS_XRAY_TRACING_NAME
+              Value: MyApp
         - Name: xray
           Essential: true
           Cpu: 32
