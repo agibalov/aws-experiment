@@ -11,6 +11,9 @@ Parameters:
   DbPassword:
     Type: String
     Default: dbpassword123!
+  DbName:
+    Type: String
+    Default: db1
 
 Outputs:
   Url:
@@ -81,6 +84,16 @@ Resources:
           Environment:
             - Name: AWS_XRAY_TRACING_NAME
               Value: MyApp
+            - Name: MYSQL_USERNAME
+              Value: !Ref DbUsername
+            - Name: MYSQL_PASSWORD
+              Value: !Ref DbPassword
+            - Name: MYSQL_HOST
+              Value: !GetAtt DbInstance.Endpoint.Address
+            - Name: MYSQL_PORT
+              Value: !GetAtt DbInstance.Endpoint.Port
+            - Name: MYSQL_DATABASE
+              Value: !Ref DbName
         - Name: xray
           Essential: true
           Cpu: 32
@@ -176,6 +189,7 @@ Resources:
       DBInstanceClass: db.t3.micro
       StorageType: gp2
       AllocatedStorage: 5
+      DBName: !Ref DbName
       MasterUsername: !Ref DbUsername
       MasterUserPassword: !Ref DbPassword
       DBSubnetGroupName: !Ref DbSubnetGroup

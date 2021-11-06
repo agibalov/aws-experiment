@@ -13,6 +13,8 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'mysql:mysql-connector-java'
     implementation 'org.slf4j:jcl-over-slf4j'
 
     compileOnly 'org.projectlombok:lombok'

@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -18,8 +19,8 @@ public class App {
     }
 
     @Bean
-    public DummyService dummyService() {
-        return new DummyService();
+    public DummyService dummyService(JdbcTemplate jdbcTemplate) {
+        return new DummyService(jdbcTemplate);
     }
 
     @Bean
@@ -43,8 +44,15 @@ public class App {
     }
 
     public static class DummyService {
+        private final JdbcTemplate jdbcTemplate;
+
+        public DummyService(JdbcTemplate jdbcTemplate) {
+            this.jdbcTemplate = jdbcTemplate;
+        }
+
         @SneakyThrows
         public void doSomething() {
+            jdbcTemplate.queryForObject("select 1 + 1", Integer.class);
             Thread.sleep(10);
         }
     }
