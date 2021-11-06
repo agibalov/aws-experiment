@@ -1,5 +1,8 @@
 package io.agibalov;
 
+import com.amazonaws.xray.AWSXRay;
+import com.amazonaws.xray.entities.Segment;
+import com.amazonaws.xray.entities.Subsegment;
 import lombok.SneakyThrows;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -38,8 +41,14 @@ public class App {
 
         @GetMapping
         public ResponseEntity<?> hello() {
-            dummyService.doSomething();
-            return ResponseEntity.ok(String.format("Hello %s", Instant.now()));
+            try (Subsegment subsegment = AWSXRay.beginSubsegment("DummyControllerSubsegment")) {
+                subsegment.putMetadata("omg", "qwerty");
+
+                dummyService.doSomething();
+                return ResponseEntity.ok(String.format("Hello %s", Instant.now()));
+            } finally {
+                AWSXRay.endSegment();
+            }
         }
     }
 
@@ -52,8 +61,14 @@ public class App {
 
         @SneakyThrows
         public void doSomething() {
-            jdbcTemplate.queryForObject("select 1 + 1", Integer.class);
-            Thread.sleep(10);
+            try (Subsegment subsegment = AWSXRay.beginSubsegment("DummyServiceSubsegment1")) {
+                jdbcTemplate.queryForObject("select 1 + 1", Integer.class);
+            }
+
+            try (Subsegment subsegment = AWSXRay.beginSubsegment("DummyServiceSubsegment2")) {
+                subsegment.putMetadata("hello", "world");
+                Thread.sleep(10);
+            }
         }
     }
 }
