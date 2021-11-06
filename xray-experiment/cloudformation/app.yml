@@ -22,7 +22,7 @@ Outputs:
 Mappings:
   ConstMap:
     singleton:
-      AppContainerName: AppContainer
+      AppContainerName: App
       AppContainerPort: 8080
 
 Resources:
@@ -94,7 +94,7 @@ Resources:
               Value: !GetAtt DbInstance.Endpoint.Port
             - Name: MYSQL_DATABASE
               Value: !Ref DbName
-        - Name: xray
+        - Name: XRay
           Essential: true
           Cpu: 32
           MemoryReservation: 256

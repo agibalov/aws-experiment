@@ -13,10 +13,12 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.data:spring-data-commons'
     implementation 'mysql:mysql-connector-java'
     implementation 'org.slf4j:jcl-over-slf4j'
-    implementation 'com.amazonaws:aws-xray-recorder-sdk-core:2.9.1'
+    implementation 'com.amazonaws:aws-xray-recorder-sdk-spring:2.9.1'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
