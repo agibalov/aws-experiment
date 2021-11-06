@@ -3,7 +3,7 @@ FROM ubuntu as builder
 RUN apt-get update && apt-get install -y curl unzip
 
 RUN mkdir /xray && \
-  curl -L https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip \
+  curl -L https://github.com/aws/aws-xray-java-agent/releases/download/v2.9.1/xray-agent.zip \
     --output /xray/xray-agent.zip && \
   unzip /xray/xray-agent.zip -d /xray
 

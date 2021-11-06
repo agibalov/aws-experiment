@@ -1,12 +1,13 @@
 package io.agibalov;
 
+import lombok.SneakyThrows;
 import org.springframework.boot.Banner;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Instant;
 
@@ -16,11 +17,35 @@ public class App {
         new SpringApplicationBuilder(App.class).bannerMode(Banner.Mode.OFF).run(args);
     }
 
-    @RestController
+    @Bean
+    public DummyService dummyService() {
+        return new DummyService();
+    }
+
+    @Bean
+    public DummyController dummyController(DummyService dummyService) {
+        return new DummyController(dummyService);
+    }
+
+    @RequestMapping
     public static class DummyController {
+        private final DummyService dummyService;
+
+        public DummyController(DummyService dummyService) {
+            this.dummyService = dummyService;
+        }
+
         @GetMapping
         public ResponseEntity<?> hello() {
+            dummyService.doSomething();
             return ResponseEntity.ok(String.format("Hello %s", Instant.now()));
+        }
+    }
+
+    public static class DummyService {
+        @SneakyThrows
+        public void doSomething() {
+            Thread.sleep(10);
         }
     }
 }
