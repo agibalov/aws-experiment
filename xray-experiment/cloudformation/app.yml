@@ -5,6 +5,12 @@ Parameters:
     Type: String
   AppImage:
     Type: String
+  DbUsername:
+    Type: String
+    Default: dbuser
+  DbPassword:
+    Type: String
+    Default: dbpassword123!
 
 Outputs:
   Url:
@@ -160,3 +166,42 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref LoadBalancerTargetGroup
+
+  DbInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      EngineVersion: 8.0.26
+      AllowMajorVersionUpgrade: true
+      DBInstanceClass: db.t3.micro
+      StorageType: gp2
+      AllocatedStorage: 5
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroup
+      BackupRetentionPeriod: 0
+      DeleteAutomatedBackups: true
+    DeletionPolicy: Delete
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DB subnet group
+      DBSubnetGroupName: !Sub "${AWS::StackName}-DbSubnetGroup"
+      SubnetIds:
+        - Fn::ImportValue: !Sub "${SharedStackName}-Az1PublicSubnet"
+        - Fn::ImportValue: !Sub "${SharedStackName}-Az2PublicSubnet"
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub "${SharedStackName}-Vpc"
+      GroupDescription: Mysql
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
