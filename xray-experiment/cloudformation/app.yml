@@ -62,6 +62,7 @@ Resources:
         - FARGATE
       ContainerDefinitions:
         - Name: !FindInMap [ "ConstMap", "singleton", "AppContainerName" ]
+          Essential: true
           PortMappings:
             - ContainerPort: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
           LogConfiguration:
@@ -72,21 +73,27 @@ Resources:
               awslogs-stream-prefix: ecs
           Image: !Ref AppImage
         - Name: xray
+          Essential: true
           Cpu: 32
           MemoryReservation: 256
           PortMappings:
             - ContainerPort: 2000
-              HostPort: 2000
               Protocol: udp
-          Image: amazon/aws-xray-daemon
-          HealthCheck:
-            Command:
-              - "CMD-SHELL"
-              - "exit 0"
-            StartPeriod: 10
-            Interval: 5
-            Timeout: 2
-            Retries: 1
+          Image: amazon/aws-xray-daemon:3.3.3
+          EntryPoint:
+            - /xray
+            - -t
+            - 0.0.0.0:2000
+            - -b
+            - 0.0.0.0:2000
+            - --log-level
+            - dev
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: xraydaemon
 
   EcsService:
     Type: AWS::ECS::Service
@@ -128,13 +135,17 @@ Resources:
       Name: !Sub "${AWS::StackName}-TargetGroup"
       VpcId:
         Fn::ImportValue: !Sub "${SharedStackName}-Vpc"
-      Port: 80
+      Port: !FindInMap [ "ConstMap", "singleton", "AppContainerPort" ]
       Protocol: HTTP
-      HealthCheckIntervalSeconds: 5
+      HealthCheckIntervalSeconds: 10
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 10
-      HealthyThresholdCount: 1
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 10
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 10
       TargetType: ip
 
   LoadBalancerListener:
