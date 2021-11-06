@@ -67,7 +67,7 @@ elif [[ "${command}" == "undeploy-shared" ]]; then
   appRepositoryName=$(get_stack_output ${SharedStackName} "AppRepositoryName")
   delete_ecr_images ${appRepositoryName}
 
-  undeploy_stack ${sharedStackName}
+  undeploy_stack ${SharedStackName}
 
 elif [[ "${command}" == "deploy-app" ]]; then
   appRepositoryUrl=$(get_stack_output ${SharedStackName} "AppRepositoryUrl")
@@ -99,7 +99,7 @@ elif [[ "${command}" == "deploy-app" ]]; then
     AppImage=${appImage}
 
   if [[ $? -ne 0 ]]; then
-    echo "Failed to deploy ${appStackName}"
+    echo "Failed to deploy ${AppStackName}"
     exit 1
   fi
 

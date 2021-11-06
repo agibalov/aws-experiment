@@ -72,17 +72,21 @@ Resources:
               awslogs-stream-prefix: ecs
           Image: !Ref AppImage
         - Name: xray
+          Cpu: 32
+          MemoryReservation: 256
           PortMappings:
             - ContainerPort: 2000
-              Protocol: tcp
-            - ContainerPort: 2000
+              HostPort: 2000
               Protocol: udp
-          Image: amazon/aws-xray-daemon:3.x
-#          Environment:
-#            - Name: AWS_REGION
-#              Value: !Ref AWS::Region
-#          Command:
-#            - --log-level=debug
+          Image: amazon/aws-xray-daemon
+          HealthCheck:
+            Command:
+              - "CMD-SHELL"
+              - "exit 0"
+            StartPeriod: 10
+            Interval: 5
+            Timeout: 2
+            Retries: 1
 
   EcsService:
     Type: AWS::ECS::Service
@@ -129,11 +133,8 @@ Resources:
       HealthCheckIntervalSeconds: 5
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 2
-      HealthyThresholdCount: 2
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 10
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 1
       TargetType: ip
 
   LoadBalancerListener:
