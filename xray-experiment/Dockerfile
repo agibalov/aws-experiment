@@ -12,8 +12,8 @@ FROM openjdk:11-jre-slim
 RUN groupadd --gid 999 appuser && \
   useradd --system --uid 999 --gid appuser appuser
 
-COPY build/libs/xray-experiment-1.0-SNAPSHOT.jar /app/app.jar
 COPY --from=builder /xray/disco /xray
+COPY build/libs/xray-experiment-1.0-SNAPSHOT.jar /app/app.jar
 
 WORKDIR /app
 
@@ -23,5 +23,10 @@ USER appuser
 
 EXPOSE 8080
 
-#CMD ./app.jar
-ENTRYPOINT [ "sh", "-c", "java -Dlogging.level.com.amazonaws.xray=DEBUG -javaagent:/xray/disco-java-agent.jar=pluginPath=/xray/disco-plugins -jar app.jar" ]
+ENTRYPOINT [ \
+  "java", \
+  "-Dlogging.level.com.amazonaws.xray=DEBUG", \
+  "-javaagent:/xray/disco-java-agent.jar=pluginPath=/xray/disco-plugins", \
+  "-jar", \
+  "app.jar" \
+]
