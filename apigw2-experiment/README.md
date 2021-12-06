@@ -12,6 +12,7 @@ The AWS API Gateway v2 hello world.
 * `./tool.sh undeploy` to undeploy.
 * `./tool.sh test-http` to test the HTTP API.
 * `./tool.sh test-ws` to connect to WebSocket API. Then:
+
   Type: `{"action":"SendMessage","text":"omg"}`
 
   You should get something like:
