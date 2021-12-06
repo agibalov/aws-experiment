@@ -43,13 +43,18 @@ elif [[ "${command}" == "undeploy" ]]; then
   stackName=$(get_app_stack_name)
   undeploy_stack ${stackName}
 
-elif [[ "${command}" == "test" ]]; then
+elif [[ "${command}" == "test-http" ]]; then
   stackName=$(get_app_stack_name)
-  apiEndpoint=$(get_stack_output ${stackName} "ApiEndpoint")
+  httpApiEndpoint=$(get_stack_output ${stackName} "HttpApiEndpoint")
   curl \
     --request POST \
     --write-out '\n' \
-    ${apiEndpoint}/hello-there
+    ${httpApiEndpoint}/hello-there
+
+elif [[ "${command}" == "test-ws" ]]; then
+  stackName=$(get_app_stack_name)
+  wsApiEndpoint=$(get_stack_output ${stackName} "WsApiEndpoint")
+  wscat -c ${wsApiEndpoint}
 
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"

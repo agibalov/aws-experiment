@@ -1,23 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Outputs:
-  ApiEndpoint:
-    Value: !GetAtt Api.ApiEndpoint
+  HttpApiEndpoint:
+    Value: !GetAtt HttpApi.ApiEndpoint
+  WsApiEndpoint:
+    Value: !Sub "${WsApi.ApiEndpoint}/${WsProdStage}"
 
 Resources:
-  Api:
-    Type: AWS::ApiGatewayV2::Api
-    Properties:
-      Name: "apigw2-experiment"
-      ProtocolType: HTTP
-      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandlerLambdaFunction.Arn}/invocations"
-
-  ApiHandlerLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${ApiHandlerLambdaFunction}"
-      RetentionInDays: 1
-
+  # Shared
   ApiHandlerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -39,7 +29,21 @@ Resources:
                   - logs:PutLogEvents
                 Resource: "*"
 
-  ApiHandlerLambdaFunction:
+  # HTTP
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment-http"
+      ProtocolType: HTTP
+      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HttpApiHandlerLambdaFunction.Arn}/invocations"
+
+  HttpApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${HttpApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  HttpApiHandlerLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
@@ -65,10 +69,87 @@ Resources:
       Timeout: 60
       MemorySize: 128
 
-  PermissionForApiGatewayToInvokeApiHandlerLambdaFunction:
+  PermissionForApiGatewayToInvokeHttpApiHandlerLambdaFunction:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref ApiHandlerLambdaFunction
+      FunctionName: !Ref HttpApiHandlerLambdaFunction
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/$default"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/$default"
+
+  # WebSocket
+  WsApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment-ws"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.action
+
+  WsProdStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WsApi
+      AutoDeploy: true
+      StageName: prod
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      #AuthorizationType: NONE
+      RouteKey: $connect
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      #AuthorizationType: NONE
+      RouteKey: $disconnect
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  SendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      #AuthorizationType: NONE
+      RouteKey: sendmessage
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  WsApiHandlerLambdaFunctionIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsApiHandlerLambdaFunction.Arn}/invocations"
+
+  WsApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${WsApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  WsApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ApiHandlerRole.Arn
+      Code:
+        ZipFile: |
+          //const AWS = require('aws-sdk');
+
+          exports.handler = async (event) => {
+            console.log('Request received:', JSON.stringify(event));
+            return { statusCode: 200, body: `hello ${new Date().toISOString()}` };
+          };
+      Runtime: nodejs14.x
+      Timeout: 60
+      MemorySize: 128
+
+  PermissionForApiGatewayToInvokeWsApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WsApiHandlerLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      #SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*/$default"

@@ -2,11 +2,16 @@
 
 The AWS API Gateway v2 hello world.
 
+## Prerequisites
+
+* [wscat](https://www.npmjs.com/package/wscat)
+
 ## How to deploy and run
 
 * `./tool.sh deploy` to deploy.
 * `./tool.sh undeploy` to undeploy.
-* `./tool.sh test` to test.
+* `./tool.sh test-http` to test the HTTP API.
+* `./tool.sh test-ws` to test the WebSocket API.
 
 ## Notes
 
