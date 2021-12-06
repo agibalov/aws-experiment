@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  ApiEndpoint:
+    Value: !GetAtt Api.ApiEndpoint
+
+Resources:
+  Api:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment"
+      ProtocolType: HTTP
+      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandlerLambdaFunction.Arn}/invocations"
+
+  ApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  ApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  ApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ApiHandlerRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = function(event, context, callback) {
+            let body = null;
+            if (event.isBase64Encoded) {
+              body = Buffer.from(event.body, 'base64').toString();
+            }
+            console.log('Request received:', JSON.stringify(event), 'decoded body:', body);
+            callback(null, {
+              statusCode: 200,
+              headers: {},
+              body: JSON.stringify({
+                message: `${new Date().toISOString()} Accepted! Request ID: ${event.requestContext.requestId}`
+              }),
+              isBase64Encoded: false
+            });
+          };
+      Runtime: nodejs14.x
+      Timeout: 60
+      MemorySize: 128
+
+  PermissionForApiGatewayToInvokeApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiHandlerLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/$default"
