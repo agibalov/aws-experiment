@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  HttpApiEndpoint:
+    Value: !GetAtt HttpApi.ApiEndpoint
+  WsApiEndpoint:
+    Value: !Sub "${WsApi.ApiEndpoint}/${WsProdStage}"
+
+Resources:
+  # HTTP
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment-http"
+      ProtocolType: HTTP
+      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HttpApiHandlerLambdaFunction.Arn}/invocations"
+
+  HttpApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${HttpApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  HttpApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  HttpApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt HttpApiHandlerRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = function(event, context, callback) {
+            let body = null;
+            if (event.isBase64Encoded) {
+              body = Buffer.from(event.body, 'base64').toString();
+            }
+            console.log('Request received:', JSON.stringify(event), 'decoded body:', body);
+            callback(null, {
+              statusCode: 200,
+              headers: {},
+              body: JSON.stringify({
+                message: `${new Date().toISOString()} Accepted! Request ID: ${event.requestContext.requestId}`
+              }),
+              isBase64Encoded: false
+            });
+          };
+      Runtime: nodejs14.x
+      Timeout: 60
+      MemorySize: 128
+
+  PermissionForApiGatewayToInvokeHttpApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HttpApiHandlerLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/$default"
+
+  # WebSocket
+  WsApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment-ws"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.action
+
+  WsProdStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WsApi
+      AutoDeploy: true
+      StageName: prod
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      RouteKey: $connect
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      RouteKey: $disconnect
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  SendMessageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      RouteKey: SendMessage
+      Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
+
+  WsApiHandlerLambdaFunctionIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsApiHandlerLambdaFunction.Arn}/invocations"
+
+  WsApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${WsApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  WsApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: ManageConnections
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: execute-api:ManageConnections
+                Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*"
+
+  WsApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt WsApiHandlerRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+
+          exports.handler = async (event) => {
+            console.log('Request received:', JSON.stringify(event));
+
+            const { routeKey, connectionId } = event.requestContext;
+
+            if (routeKey === '$connect') {
+              console.log(`${connectionId} connected`);
+            } else if (routeKey === '$disconnect') {
+              console.log(`${connectionId} disconnected`);
+            } else if (routeKey === 'SendMessage') {
+              const body = JSON.parse(event.body);
+
+              const apigwManagementApi = new AWS.ApiGatewayManagementApi({
+                apiVersion: '2018-11-29',
+                endpoint: event.requestContext.domainName + '/' + event.requestContext.stage
+              });
+              await apigwManagementApi.postToConnection({
+                ConnectionId: connectionId,
+                Data: `Hello! The time is ${new Date().toISOString()} and you're saying: \"${body.text}\"`
+              }).promise();
+            } else {
+              console.log(`Unknown route key '${routeKey}', connectionId: ${connectionId}`);
+            }
+
+            return { statusCode: 200, body: 'ok' };
+          };
+      Runtime: nodejs14.x
+      Timeout: 60
+      MemorySize: 128
+
+  PermissionForApiGatewayToInvokeWsApiHandlerLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WsApiHandlerLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
