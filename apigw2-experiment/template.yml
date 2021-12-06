@@ -7,8 +7,21 @@ Outputs:
     Value: !Sub "${WsApi.ApiEndpoint}/${WsProdStage}"
 
 Resources:
-  # Shared
-  ApiHandlerRole:
+  # HTTP
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: "apigw2-experiment-http"
+      ProtocolType: HTTP
+      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HttpApiHandlerLambdaFunction.Arn}/invocations"
+
+  HttpApiHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${HttpApiHandlerLambdaFunction}"
+      RetentionInDays: 1
+
+  HttpApiHandlerRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -29,25 +42,11 @@ Resources:
                   - logs:PutLogEvents
                 Resource: "*"
 
-  # HTTP
-  HttpApi:
-    Type: AWS::ApiGatewayV2::Api
-    Properties:
-      Name: "apigw2-experiment-http"
-      ProtocolType: HTTP
-      Target: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HttpApiHandlerLambdaFunction.Arn}/invocations"
-
-  HttpApiHandlerLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${HttpApiHandlerLambdaFunction}"
-      RetentionInDays: 1
-
   HttpApiHandlerLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
-      Role: !GetAtt ApiHandlerRole.Arn
+      Role: !GetAtt HttpApiHandlerRole.Arn
       Code:
         ZipFile: |
           exports.handler = function(event, context, callback) {
@@ -96,7 +95,6 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref WsApi
-      #AuthorizationType: NONE
       RouteKey: $connect
       Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
 
@@ -104,16 +102,14 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref WsApi
-      #AuthorizationType: NONE
       RouteKey: $disconnect
       Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
 
-  SendRoute:
+  SendMessageRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref WsApi
-      #AuthorizationType: NONE
-      RouteKey: sendmessage
+      RouteKey: SendMessage
       Target: !Sub "integrations/${WsApiHandlerLambdaFunctionIntegration}"
 
   WsApiHandlerLambdaFunctionIntegration:
@@ -129,18 +125,68 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${WsApiHandlerLambdaFunction}"
       RetentionInDays: 1
 
+  WsApiHandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: ManageConnections
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: execute-api:ManageConnections
+                Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*"
+
   WsApiHandlerLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
-      Role: !GetAtt ApiHandlerRole.Arn
+      Role: !GetAtt WsApiHandlerRole.Arn
       Code:
         ZipFile: |
-          //const AWS = require('aws-sdk');
+          const AWS = require('aws-sdk');
 
           exports.handler = async (event) => {
             console.log('Request received:', JSON.stringify(event));
-            return { statusCode: 200, body: `hello ${new Date().toISOString()}` };
+
+            const { routeKey, connectionId } = event.requestContext;
+
+            if (routeKey === '$connect') {
+              console.log(`${connectionId} connected`);
+            } else if (routeKey === '$disconnect') {
+              console.log(`${connectionId} disconnected`);
+            } else if (routeKey === 'SendMessage') {
+              const body = JSON.parse(event.body);
+
+              const apigwManagementApi = new AWS.ApiGatewayManagementApi({
+                apiVersion: '2018-11-29',
+                endpoint: event.requestContext.domainName + '/' + event.requestContext.stage
+              });
+              await apigwManagementApi.postToConnection({
+                ConnectionId: connectionId,
+                Data: `Hello! The time is ${new Date().toISOString()} and you're saying: \"${body.text}\"`
+              }).promise();
+            } else {
+              console.log(`Unknown route key '${routeKey}', connectionId: ${connectionId}`);
+            }
+
+            return { statusCode: 200, body: 'ok' };
           };
       Runtime: nodejs14.x
       Timeout: 60
@@ -152,4 +198,3 @@ Resources:
       FunctionName: !Ref WsApiHandlerLambdaFunction
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      #SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*/$default"
