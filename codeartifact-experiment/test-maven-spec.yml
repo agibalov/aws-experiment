@@ -18,10 +18,14 @@ phases:
         --format maven
         --output text)
       - >
-        aws codeartifact get-authorization-token
+        repositoryPassword=$(aws codeartifact get-authorization-token
         --domain ${CODEARTIFACT_DOMAIN}
         --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
         --query authorizationToken
-        --output text
-      #- cd codeartifact-experiment/dummy-java-app
-      #- ./gradlew test
+        --output text)
+      - cd codeartifact-experiment/dummy-java-app
+      - >
+        REPOSITORY_URL=${repositoryUrl}
+        REPOSITORY_USER=aws
+        REPOSITORY_PASSWORD=${repositoryPassword}
+        ./gradlew test
