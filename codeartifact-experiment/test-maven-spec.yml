@@ -10,6 +10,6 @@ phases:
       # Completely optional, just to make things more explicit
       - echo "127.0.0.1 repo.maven.apache.org" >> /etc/hosts
 
-      - aws codeartifact get-repository-endpoint --domain ${CODEARTIFACT_DOMAIN} --domain-owner ${CODEARTIFACT_DOMAIN_OWNER} --repository ${CODEARTIFACT_REPOSITORY} --format maven
+      - aws codeartifact get-repository-endpoint --domain ${CODEARTIFACT_DOMAIN} --domain-owner ${CODEARTIFACT_DOMAIN_OWNER} --repository ${CODEARTIFACT_REPOSITORY} --format maven --output text
       #- cd codeartifact-experiment/dummy-java-app
       #- ./gradlew test
