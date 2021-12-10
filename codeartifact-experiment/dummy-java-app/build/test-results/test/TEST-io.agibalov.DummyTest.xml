@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.agibalov.DummyTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2021-12-10T21:55:20" hostname="nebuchadnezzar" time="0.025">
-  <properties/>
-  <testcase name="dummy()" classname="io.agibalov.DummyTest" time="0.025"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
