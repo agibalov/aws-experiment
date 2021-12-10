@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  BranchName:
+    Type: String
+
+Outputs:
+  DomainName:
+    Value: !GetAtt Repository.DomainName
+  DomainOwner:
+    Value: !GetAtt Repository.DomainOwner
+  RepositoryName:
+    Value: !GetAtt Repository.Name
+
+Resources:
+  Domain:
+    Type: AWS::CodeArtifact::Domain
+    Properties:
+      DomainName: my-domain
+
+  Repository:
+    Type: AWS::CodeArtifact::Repository
+    Properties:
+      DomainName: !GetAtt Domain.Name
+      RepositoryName: my-repo
+      ExternalConnections:
+        - public:npmjs
+
+  ProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "test-project"
+      RetentionInDays: 1
+
+  ProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  Project:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: "test-project"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: CODEARTIFACT_DOMAIN
+            Value: !GetAtt Repository.DomainName
+          - Name: CODEARTIFACT_DOMAIN_OWNER
+            Value: !GetAtt Repository.DomainOwner
+          - Name: CODEARTIFACT_REPOSITORY
+            Value: !GetAtt Repository.Name
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: codeartifact-experiment/spec.yml
+      SourceVersion: !Ref BranchName
+      Triggers:
+        Webhook: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref ProjectLogGroup

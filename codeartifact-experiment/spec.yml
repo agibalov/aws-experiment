@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+
+  build:
+    commands:
+      - >
+        aws codeartifact login
+          --tool npm \
+          --domain ${CODEARTIFACT_DOMAIN} \
+          --domain-owner ${CODEARTIFACT_DOMAIN_OWNER} \
+          --repository ${CODEARTIFACT_REPOSITORY}
+      - cat ~/.npmrc
