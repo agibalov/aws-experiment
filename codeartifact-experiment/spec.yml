@@ -9,8 +9,8 @@ phases:
     commands:
       - >
         aws codeartifact login
-          --tool npm \
-          --domain ${CODEARTIFACT_DOMAIN} \
-          --domain-owner ${CODEARTIFACT_DOMAIN_OWNER} \
+          --tool npm
+          --domain ${CODEARTIFACT_DOMAIN}
+          --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
           --repository ${CODEARTIFACT_REPOSITORY}
       - cat ~/.npmrc
