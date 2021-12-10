@@ -14,5 +14,6 @@ phases:
         --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
         --repository ${CODEARTIFACT_REPOSITORY}
       - cat ~/.npmrc
+      - npm config set loglevel verbose
       - npm install -g @angular/cli
       - ng new my-app
