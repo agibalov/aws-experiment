@@ -28,4 +28,4 @@ phases:
         REPOSITORY_URL=${repositoryUrl}
         REPOSITORY_USER=aws
         REPOSITORY_PASSWORD=${repositoryPassword}
-        ./gradlew test
+        ./gradlew test --info
