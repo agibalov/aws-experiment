@@ -6,4 +6,5 @@ The AWS CodeArtifact hello world. The goal is to learn how to use CodeArtifact a
 
 * `branch=<BRANCH> ./tool.sh deploy` to deploy.
   * Trigger the `test-npm-project` to see how it works for NPM. 
+  * Trigger the `test-maven-project` to see how it works for Maven.
 * `./tool.sh undeploy` to undeploy.

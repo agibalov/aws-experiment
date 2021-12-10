@@ -76,7 +76,7 @@ Resources:
           GroupName: !Ref NpmProjectLogGroup
 
   # Maven Central
-  MavenCentralRepository:
+  MavenRepository:
     Type: AWS::CodeArtifact::Repository
     Properties:
       DomainName: !GetAtt Domain.Name
