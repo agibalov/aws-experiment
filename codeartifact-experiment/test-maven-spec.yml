@@ -7,6 +7,6 @@ phases:
 
   build:
     commands:
-      - java --version
-      - gradle --version
-      - mvn --version
+      #- echo "127.0.0.1 repo1.maven.org" >> /etc/hosts
+      - cd codeartifact-experiment/dummy-java-app
+      - ./gradlew test
