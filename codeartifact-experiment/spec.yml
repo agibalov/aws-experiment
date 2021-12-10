@@ -7,13 +7,13 @@ phases:
 
   build:
     commands:
-      - >
-        aws codeartifact login
-        --tool npm
-        --domain ${CODEARTIFACT_DOMAIN}
-        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
-        --repository ${CODEARTIFACT_REPOSITORY}
+#      - >
+#        aws codeartifact login
+#        --tool npm
+#        --domain ${CODEARTIFACT_DOMAIN}
+#        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
+#        --repository ${CODEARTIFACT_REPOSITORY}
       - cat ~/.npmrc
-      - npm config set loglevel verbose
+      - echo "registry.npmjs.org" >> /etc/hosts
+#      - npm config set loglevel verbose
       - npm install -g @angular/cli
-      - ng new my-app
