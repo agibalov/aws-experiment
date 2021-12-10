@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto11
+
+  build:
+    commands:
+      # Completely optional, just to make things more explicit
+      - echo "127.0.0.1 repo.maven.apache.org" >> /etc/hosts
+
+      - >
+        repositoryUrl=$(aws codeartifact get-repository-endpoint
+        --domain ${CODEARTIFACT_DOMAIN}
+        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
+        --repository ${CODEARTIFACT_REPOSITORY}
+        --format maven
+        --output text)
+      - >
+        repositoryPassword=$(aws codeartifact get-authorization-token
+        --domain ${CODEARTIFACT_DOMAIN}
+        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
+        --query authorizationToken
+        --output text)
+      - cd codeartifact-experiment/dummy-java-app
+      - >
+        REPOSITORY_URL=${repositoryUrl}
+        REPOSITORY_USER=aws
+        REPOSITORY_PASSWORD=${repositoryPassword}
+        ./gradlew test --info

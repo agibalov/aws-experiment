@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+if (System.env.REPOSITORY_URL == null) {
+    repositories {
+        mavenCentral()
+    }
+} else {
+    repositories {
+        maven {
+            url System.env.REPOSITORY_URL
+            credentials {
+                username System.env.REPOSITORY_USER
+                password System.env.REPOSITORY_PASSWORD
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+test {
+    useJUnitPlatform()
+}

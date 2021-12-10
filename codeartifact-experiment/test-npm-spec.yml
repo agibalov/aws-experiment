@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+
+  build:
+    commands:
+      # Completely optional, just to make things more explicit
+      - echo "127.0.0.1 registry.npmjs.org" >> /etc/hosts
+      - npm config set loglevel verbose
+      - npm config get registry
+
+      - >
+        aws codeartifact login
+        --tool npm
+        --domain ${CODEARTIFACT_DOMAIN}
+        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
+        --repository ${CODEARTIFACT_REPOSITORY}
+      - npm config get registry
+
+      - npm install -g @angular/cli

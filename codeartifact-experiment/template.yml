@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  BranchName:
+    Type: String
+
+Resources:
+  Domain:
+    Type: AWS::CodeArtifact::Domain
+    Properties:
+      DomainName: my-domain
+
+  ProjectServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  # NPM
+  NpmRepository:
+    Type: AWS::CodeArtifact::Repository
+    Properties:
+      DomainName: !GetAtt Domain.Name
+      RepositoryName: my-npm-repo
+      ExternalConnections:
+        - public:npmjs
+
+  NpmProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "test-npm-project"
+      RetentionInDays: 1
+
+  NpmProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: "test-npm-project"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: CODEARTIFACT_DOMAIN
+            Value: !GetAtt NpmRepository.DomainName
+          - Name: CODEARTIFACT_DOMAIN_OWNER
+            Value: !GetAtt NpmRepository.DomainOwner
+          - Name: CODEARTIFACT_REPOSITORY
+            Value: !GetAtt NpmRepository.Name
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: codeartifact-experiment/test-npm-spec.yml
+      SourceVersion: !Ref BranchName
+      Triggers:
+        Webhook: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref NpmProjectLogGroup
+
+  # Maven Central
+  MavenRepository:
+    Type: AWS::CodeArtifact::Repository
+    Properties:
+      DomainName: !GetAtt Domain.Name
+      RepositoryName: my-maven-repo
+      ExternalConnections:
+        - public:maven-central
+
+  MavenProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "test-maven-project"
+      RetentionInDays: 1
+
+  MavenProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: "test-maven-project"
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: CODEARTIFACT_DOMAIN
+            Value: !GetAtt MavenRepository.DomainName
+          - Name: CODEARTIFACT_DOMAIN_OWNER
+            Value: !GetAtt MavenRepository.DomainOwner
+          - Name: CODEARTIFACT_REPOSITORY
+            Value: !GetAtt MavenRepository.Name
+      ServiceRole: !GetAtt ProjectServiceRole.Arn
+      Source:
+        Type: GITHUB
+        Location: https://github.com/agibalov/aws-experiment.git
+        BuildSpec: codeartifact-experiment/test-maven-spec.yml
+      SourceVersion: !Ref BranchName
+      Triggers:
+        Webhook: false
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref MavenProjectLogGroup
