@@ -7,6 +7,6 @@ phases:
 
   build:
     commands:
-      - echo "127.0.0.1 repo1.maven.org" >> /etc/hosts
+      - echo "127.0.0.1 repo.maven.apache.org" >> /etc/hosts
       - cd codeartifact-experiment/dummy-java-app
       - ./gradlew clean test
