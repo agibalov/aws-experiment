@@ -72,4 +72,4 @@ Resources:
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
-          GroupName: !Ref ProjectLogGroup
+          GroupName: !Ref NpmProjectLogGroup
