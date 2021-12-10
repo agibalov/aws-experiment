@@ -7,7 +7,7 @@ phases:
 
   build:
     commands:
-      # These are completely optional, just to make things more explicit
+      # Completely optional, just to make things more explicit
       - echo "127.0.0.1 registry.npmjs.org" >> /etc/hosts
       - npm config set loglevel verbose
       - npm config get registry
