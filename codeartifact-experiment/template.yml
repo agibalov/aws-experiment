@@ -65,7 +65,7 @@ Resources:
       Source:
         Type: GITHUB
         Location: https://github.com/agibalov/aws-experiment.git
-        BuildSpec: codeartifact-experiment/npm-test-spec.yml
+        BuildSpec: codeartifact-experiment/test-npm-spec.yml
       SourceVersion: !Ref BranchName
       Triggers:
         Webhook: false
