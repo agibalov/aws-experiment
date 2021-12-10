@@ -11,10 +11,12 @@ if (System.env.REPOSITORY_URL == null) {
     }
 } else {
     repositories {
-        url System.env.REPOSITORY_URL
-        credentials {
-            username System.env.REPOSITORY_USER
-            password System.env.REPOSITORY_PASSWORD
+        maven {
+            url System.env.REPOSITORY_URL
+            credentials {
+                username System.env.REPOSITORY_USER
+                password System.env.REPOSITORY_PASSWORD
+            }
         }
     }
 }
