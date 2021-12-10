@@ -14,6 +14,6 @@ phases:
 #        --domain-owner ${CODEARTIFACT_DOMAIN_OWNER}
 #        --repository ${CODEARTIFACT_REPOSITORY}
       #- cat ~/.npmrc
-      - echo "registry.npmjs.org" >> /etc/hosts
+      - echo "registry.npmjs.org 127.0.0.1" >> /etc/hosts
 #      - npm config set loglevel verbose
       - npm install -g @angular/cli
