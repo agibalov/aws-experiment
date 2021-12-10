@@ -1,0 +1,12 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      corretto11: 11
+
+  build:
+    commands:
+      - java --version
+      - gradle --version
+      - mvn --version
