@@ -21,16 +21,6 @@ undeploy_stack() {
     --region ${Region}
 }
 
-get_stack_output() {
-  local stackName=$1
-  local outputName=$2
-  aws cloudformation describe-stacks \
-    --stack-name ${stackName} \
-    --query 'Stacks[0].Outputs[?OutputKey==`'${outputName}'`].OutputValue' \
-    --output text \
-    --region ${Region}
-}
-
 if [[ "${command}" == "deploy" ]]; then
   branch=${branch:?not set or empty}
   stackName=$(get_app_stack_name)
@@ -45,21 +35,6 @@ if [[ "${command}" == "deploy" ]]; then
 elif [[ "${command}" == "undeploy" ]]; then
   stackName=$(get_app_stack_name)
   undeploy_stack ${stackName}
-
-#elif [[ "${command}" == "test-npm" ]]; then
-#  stackName=$(get_app_stack_name)
-#  domainName=$(get_stack_output ${stackName} "DomainName")
-#  domainOwner=$(get_stack_output ${stackName} "DomainOwner")
-#  repositoryName=$(get_stack_output ${stackName} "RepositoryName")
-#
-#  docker build --file npm-test.Dockerfile --tag test-npm .
-#  docker run \
-#    --env CODEARTIFACT_DOMAIN=${domainName} \
-#    --env CODEARTIFACT_DOMAIN_OWNER=${domainOwner} \
-#    --env CODEARTIFACT_REPOSITORY=${repositoryName} \
-#    --env AWS_REGION=${Region} \
-#    --rm \
-#    test-npm
 
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"

@@ -4,35 +4,27 @@ Parameters:
   BranchName:
     Type: String
 
-Outputs:
-  DomainName:
-    Value: !GetAtt Repository.DomainName
-  DomainOwner:
-    Value: !GetAtt Repository.DomainOwner
-  RepositoryName:
-    Value: !GetAtt Repository.Name
-
 Resources:
   Domain:
     Type: AWS::CodeArtifact::Domain
     Properties:
       DomainName: my-domain
 
-  Repository:
+  NpmRepository:
     Type: AWS::CodeArtifact::Repository
     Properties:
       DomainName: !GetAtt Domain.Name
-      RepositoryName: my-repo
+      RepositoryName: my-npm-repo
       ExternalConnections:
         - public:npmjs
 
-  ProjectLogGroup:
+  NpmProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: "test-project"
+      LogGroupName: "test-npm-project"
       RetentionInDays: 1
 
-  ProjectServiceRole:
+  NpmProjectServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -51,10 +43,10 @@ Resources:
                 Action: '*'
                 Resource: '*'
 
-  Project:
+  NpmProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: "test-project"
+      Name: "test-npm-project"
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
@@ -64,16 +56,16 @@ Resources:
         PrivilegedMode: false
         EnvironmentVariables:
           - Name: CODEARTIFACT_DOMAIN
-            Value: !GetAtt Repository.DomainName
+            Value: !GetAtt NpmRepository.DomainName
           - Name: CODEARTIFACT_DOMAIN_OWNER
-            Value: !GetAtt Repository.DomainOwner
+            Value: !GetAtt NpmRepository.DomainOwner
           - Name: CODEARTIFACT_REPOSITORY
-            Value: !GetAtt Repository.Name
-      ServiceRole: !GetAtt ProjectServiceRole.Arn
+            Value: !GetAtt NpmRepository.Name
+      ServiceRole: !GetAtt NpmProjectServiceRole.Arn
       Source:
         Type: GITHUB
         Location: https://github.com/agibalov/aws-experiment.git
-        BuildSpec: codeartifact-experiment/spec.yml
+        BuildSpec: codeartifact-experiment/npm-test-spec.yml
       SourceVersion: !Ref BranchName
       Triggers:
         Webhook: false
