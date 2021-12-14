@@ -65,11 +65,12 @@ elif [[ "${command}" == "create-environment-template-version" ]]; then
 
 elif [[ "${command}" == "create-environment" ]]; then
   envName=${envName:?not set or empty}
+  version=${version:?not set or empty}
   protonServiceRoleArn=$(get_stack_output "${BaseStackName}" "ProtonServiceRoleArn")
   aws proton create-environment \
     --name ${envName} \
     --spec "{ proton: EnvironmentSpec, spec: { env_name: ${envName} } }" \
-    --template-major-version 9 \
+    --template-major-version ${version} \
     --template-name ${DummyTemplateName} \
     --proton-service-role-arn ${protonServiceRoleArn} \
     --region ${Region}
