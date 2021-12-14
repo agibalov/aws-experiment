@@ -7,6 +7,6 @@ schema:
       type: object
       description: "Input properties for my environment"
       properties:
-        infra_bucket_name:
+        env_name:
           type: string
           description: "Infra bucket name"

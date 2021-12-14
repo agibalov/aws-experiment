@@ -63,6 +63,30 @@ elif [[ "${command}" == "create-environment-template-version" ]]; then
 
   rm ${bundleFilename}
 
+elif [[ "${command}" == "create-environment" ]]; then
+  envName=${envName:?not set or empty}
+  protonServiceRoleArn=$(get_stack_output "${BaseStackName}" "ProtonServiceRoleArn")
+  aws proton create-environment \
+    --name ${envName} \
+    --spec "{ proton: EnvironmentSpec, spec: { env_name: ${envName} } }" \
+    --template-major-version 9 \
+    --template-name ${DummyTemplateName} \
+    --proton-service-role-arn ${protonServiceRoleArn} \
+    --region ${Region}
+
+  aws proton wait environment-deployed \
+    --name ${envName} \
+    --region ${Region}
+  aws proton get-environment \
+    --name ${envName} \
+    --region ${Region}
+
+elif [[ "${command}" == "delete-environment" ]]; then
+  envName=${envName:?not set or empty}
+  aws proton delete-environment \
+    --name ${envName} \
+    --region ${Region}
+
 elif [[ "${command}" == "" ]]; then
   echo "No command specified"
 else

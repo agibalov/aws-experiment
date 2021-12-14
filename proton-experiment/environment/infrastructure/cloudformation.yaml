@@ -4,4 +4,4 @@ Resources:
   InfraBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: '{{ environment.inputs.infra_bucket_name }}'
+      BucketName: '{{ environment.inputs.env_name }}-3278yr7283yr32'
