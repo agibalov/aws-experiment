@@ -11,11 +11,25 @@ Resources:
       Tags:
         - Key: ServiceName
           Value: '{{ service.name }}'
-        - Key: EnvBucketName
+        - Key: ServiceBranch
+          Value: '{{ service.branch_name }}'
+        - Key: ServiceRepoConnectionArn
+          Value: '{{ service.repository_connection_arn }}'
+        - Key: ServiceRepoConnectionId
+          Value: '{{ service.repository_id }}'
+        - Key: PipelineInputsHello
+          Value: '{{ pipeline.inputs.hello }}'
+        - Key: SIEnvBucketName
           Value: '{{ service_instances[0].environment.outputs.EnvironmentBucketName }}'
-        - Key: InputsHello
+        - Key: SIInputsHello
           Value: '{{ service_instances[0].inputs.hello }}'
-        - Key: Name
+        - Key: SIName
           Value: '{{ service_instances[0].name }}'
-        - Key: Outputs
+        - Key: SIOutputs
           Value: '{{ service_instances[0].outputs.ServiceBucketName }}'
+
+# Pipeline:
+# {{pipeline|tojson}}
+
+# Service:
+# {{service|tojson}}
