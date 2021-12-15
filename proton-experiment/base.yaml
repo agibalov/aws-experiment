@@ -5,6 +5,8 @@ Outputs:
     Value: !Ref Bucket
   ProtonServiceRoleArn:
     Value: !GetAtt ProtonServiceRole.Arn
+  PipelineServiceRoleArn:
+    Value: !GetAtt PipelineServiceRole.Arn
 
 Resources:
   Bucket:
@@ -21,10 +23,97 @@ Resources:
             Service: proton.amazonaws.com
           Action: sts:AssumeRole
       Policies:
-        - PolicyName: AllowEverything
+        - PolicyName: AllowThings
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: '*'
-                Resource: '*'
+                Action:
+                  - cloudformation:CancelUpdateStack
+                  - cloudformation:ContinueUpdateRollback
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:CreateStack
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResourceDrifts
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DetectStackResourceDrift
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:ListChangeSets
+                  - cloudformation:ListStackResources
+                  - cloudformation:UpdateStack
+                Resource: !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/AWSProton-*"
+              - Effect: Allow
+                NotAction:
+                  - organizations:*
+                  - account:*
+                Resource: "*"
+                Condition:
+                  ForAnyValue:StringEquals:
+                    aws:CalledVia:
+                      - cloudformation.amazonaws.com
+              - Effect: Allow
+                Action:
+                  - organizations:DescribeOrganization
+                  - account:ListRegions
+                Resource: "*"
+                Condition:
+                  ForAnyValue:StringEquals:
+                    aws:CalledVia:
+                      - cloudformation.amazonaws.com
+
+  PipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: proton.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowThings
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:CancelUpdateStack
+                  - cloudformation:ContinueUpdateRollback
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:CreateStack
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResourceDrifts
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DetectStackResourceDrift
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:ListChangeSets
+                  - cloudformation:ListStackResources
+                  - cloudformation:UpdateStack
+                Resource: !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/AWSProton-*"
+              - Effect: Allow
+                NotAction:
+                  - organizations:*
+                  - account:*
+                Resource: "*"
+                Condition:
+                  ForAnyValue:StringEquals:
+                    aws:CalledVia:
+                      - cloudformation.amazonaws.com
+              - Effect: Allow
+                Action:
+                  - organizations:DescribeOrganization
+                  - account:ListRegions
+                Resource: "*"
+                Condition:
+                  ForAnyValue:StringEquals:
+                    aws:CalledVia:
+                      - cloudformation.amazonaws.com

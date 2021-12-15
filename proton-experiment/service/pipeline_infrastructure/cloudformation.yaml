@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  PipelineBucketName:
+    Value: !Ref PipelineBucket
+
+Resources:
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: ServiceName
+          Value: '{{ service.name }}'
+        - Key: EnvBucketName
+          Value: '{{ service_instances[0].environment.outputs.EnvironmentBucketName }}'
+        - Key: InputsHello
+          Value: '{{ service_instances[0].inputs.hello }}'
+        - Key: Name
+          Value: '{{ service_instances[0].name }}'
+        - Key: Outputs
+          Value: '{{ service_instances[0].outputs.ServiceBucketName }}'

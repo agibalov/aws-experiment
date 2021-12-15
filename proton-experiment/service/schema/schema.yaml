@@ -1,0 +1,20 @@
+schema:
+  format:
+    openapi: "3.0.0"
+  service_input_type: "ServiceInput"
+  pipeline_input_type: "PipelineInput"
+  types:
+    ServiceInput:
+      type: object
+      description: "Input properties for my service"
+      properties:
+        hello:
+          type: string
+          description: "Some hello parameter"
+    PipelineInput:
+      type: object
+      description: "Input properties for my service"
+      properties:
+        hello:
+          type: string
+          description: "Some hello parameter"

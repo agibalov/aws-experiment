@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
+Outputs:
+  EnvironmentBucketName:
+    Value: !Ref EnvironmentBucket
+
 Resources:
   EnvironmentBucket:
     Type: AWS::S3::Bucket

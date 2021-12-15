@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  ServiceBucketName:
+    Value: !Ref ServiceBucket
+
+Resources:
+  ServiceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: ServiceName
+          Value: '{{ service.name }}'
+        - Key: ServiceInstanceName
+          Value: '{{ service_instance.name }}'
+        - Key: ServiceInstanceInputsHello
+          Value: '{{ service_instance.inputs.hello }}'
