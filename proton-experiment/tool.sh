@@ -4,7 +4,7 @@ set -x
 
 Region=us-east-1
 BaseStackName=proton-experiment-base
-DummyTemplateName=template1
+EnvironmentTemplateName=env1
 
 command=$1
 
@@ -43,12 +43,12 @@ elif [[ "${command}" == "undeploy-base" ]]; then
 
 elif [[ "${command}" == "create-environment-template" ]]; then
   aws proton create-environment-template \
-    --name ${DummyTemplateName} \
+    --name ${EnvironmentTemplateName} \
     --region ${Region}
 
 elif [[ "${command}" == "delete-environment-template" ]]; then
   aws proton delete-environment-template \
-    --name ${DummyTemplateName} \
+    --name ${EnvironmentTemplateName} \
     --region ${Region}
 
 elif [[ "${command}" == "create-environment-template-version" ]]; then
@@ -59,7 +59,7 @@ elif [[ "${command}" == "create-environment-template-version" ]]; then
   templatesBucketName=$(get_stack_output "${BaseStackName}" "BucketName")
   aws s3 cp ${bundleFilename} s3://${templatesBucketName}/${bundleFilename}
   environmentTemplateVersionJson=$(aws proton create-environment-template-version \
-    --template-name ${DummyTemplateName} \
+    --template-name ${EnvironmentTemplateName} \
     --source s3=\{bucket=${templatesBucketName},key=${bundleFilename}\} \
     --region ${Region})
 
@@ -71,13 +71,13 @@ elif [[ "${command}" == "create-environment-template-version" ]]; then
   aws proton wait environment-template-version-registered \
     --major-version ${majorVersion} \
     --minor-version ${minorVersion} \
-    --template-name ${DummyTemplateName} \
+    --template-name ${EnvironmentTemplateName} \
     --region ${Region}
 
   aws proton update-environment-template-version \
     --major-version ${majorVersion} \
     --minor-version ${minorVersion} \
-    --template-name ${DummyTemplateName} \
+    --template-name ${EnvironmentTemplateName} \
     --status PUBLISHED \
     --region ${Region}
 
@@ -94,7 +94,7 @@ elif [[ "${command}" == "create-environment" ]]; then
     --spec "{ proton: EnvironmentSpec, spec: { env_name: ${envName} } }" \
     --template-major-version ${majorVersion} \
     --template-minor-version ${minorVersion} \
-    --template-name ${DummyTemplateName} \
+    --template-name ${EnvironmentTemplateName} \
     --proton-service-role-arn ${protonServiceRoleArn} \
     --region ${Region}
 
