@@ -8,4 +8,4 @@ TODO
 
 ## Notes
 
-* TODO: when creating an environment template version, publish it
+TODO

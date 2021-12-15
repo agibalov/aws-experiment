@@ -37,6 +37,8 @@ if [[ "${command}" == "deploy-base" ]]; then
     --region ${Region}
 
 elif [[ "${command}" == "undeploy-base" ]]; then
+  bucketName=$(get_stack_output ${BaseStackName} "BucketName")
+  aws s3 rm s3://${bucketName} --recursive
   undeploy_stack ${BaseStackName}
 
 elif [[ "${command}" == "create-environment-template" ]]; then
@@ -45,7 +47,7 @@ elif [[ "${command}" == "create-environment-template" ]]; then
     --region ${Region}
 
 elif [[ "${command}" == "delete-environment-template" ]]; then
-  aws proton create-environment-template \
+  aws proton delete-environment-template \
     --name ${DummyTemplateName} \
     --region ${Region}
 
@@ -56,21 +58,42 @@ elif [[ "${command}" == "create-environment-template-version" ]]; then
 
   templatesBucketName=$(get_stack_output "${BaseStackName}" "BucketName")
   aws s3 cp ${bundleFilename} s3://${templatesBucketName}/${bundleFilename}
-  aws proton create-environment-template-version \
+  environmentTemplateVersionJson=$(aws proton create-environment-template-version \
     --template-name ${DummyTemplateName} \
     --source s3=\{bucket=${templatesBucketName},key=${bundleFilename}\} \
-    --region ${Region}
+    --region ${Region})
 
   rm ${bundleFilename}
 
+  majorVersion=$(echo ${environmentTemplateVersionJson} | jq '.environmentTemplateVersion.majorVersion|tonumber')
+  minorVersion=$(echo ${environmentTemplateVersionJson} | jq '.environmentTemplateVersion.minorVersion|tonumber')
+
+  aws proton wait environment-template-version-registered \
+    --major-version ${majorVersion} \
+    --minor-version ${minorVersion} \
+    --template-name ${DummyTemplateName} \
+    --region ${Region}
+
+  aws proton update-environment-template-version \
+    --major-version ${majorVersion} \
+    --minor-version ${minorVersion} \
+    --template-name ${DummyTemplateName} \
+    --status PUBLISHED \
+    --region ${Region}
+
+  echo "Environment template version: ${majorVersion}.${minorVersion}"
+
 elif [[ "${command}" == "create-environment" ]]; then
   envName=${envName:?not set or empty}
-  version=${version:?not set or empty}
+  majorVersion=${majorVersion:?not set or empty}
+  minorVersion=${minorVersion:?not set or empty}
+
   protonServiceRoleArn=$(get_stack_output "${BaseStackName}" "ProtonServiceRoleArn")
   aws proton create-environment \
     --name ${envName} \
     --spec "{ proton: EnvironmentSpec, spec: { env_name: ${envName} } }" \
-    --template-major-version ${version} \
+    --template-major-version ${majorVersion} \
+    --template-minor-version ${minorVersion} \
     --template-name ${DummyTemplateName} \
     --proton-service-role-arn ${protonServiceRoleArn} \
     --region ${Region}
