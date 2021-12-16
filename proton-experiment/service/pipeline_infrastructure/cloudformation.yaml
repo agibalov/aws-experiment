@@ -127,13 +127,13 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: proton-experiment/buildspec.yaml
       TimeoutInMinutes: 5
-      LogsConfig:
-        CloudWatchLogs:
-          Status: ENABLED
-          GroupName: !Ref BuildProjectLogGroup
-
-  BuildProjectLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: '{{ service.name }}-build'
-      RetentionInDays: 1
+#      LogsConfig:
+#        CloudWatchLogs:
+#          Status: ENABLED
+#          GroupName: !Ref BuildProjectLogGroup
+#
+#  BuildProjectLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: '{{ service.name }}-build'
+#      RetentionInDays: 1

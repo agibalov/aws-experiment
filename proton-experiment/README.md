@@ -15,3 +15,4 @@ The AWS Proton hello world.
 ## Notes
 
 * Figure out CodeStar Github repository connections - either document step by step or automate.
+* Proton makes an attempt to streamline infrastructure management by introducing "environments" (which are "just the AWS resources") and "services" (which are "the AWS resources + pipelines").
