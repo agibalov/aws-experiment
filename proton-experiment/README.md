@@ -14,4 +14,4 @@ The AWS Proton hello world.
 
 ## Notes
 
-TODO
+* Figure out CodeStar Github repository connections - either document step by step or automate.
