@@ -30,6 +30,16 @@ get_stack_output() {
     --region ${Region}
 }
 
+get_proton_service_pipeline_output() {
+  local serviceName=$1
+  local outputName=$2
+  aws proton list-service-pipeline-outputs \
+    --service-name ${serviceName} \
+    --query 'outputs[?key==`'${outputName}'`].valueString' \
+    --output text \
+    --region ${Region}
+}
+
 if [[ "${command}" == "deploy-base" ]]; then
   aws cloudformation deploy \
     --template-file base.yaml \
@@ -184,7 +194,8 @@ elif [[ "${command}" == "create-service" ]]; then
 elif [[ "${command}" == "delete-service" ]]; then
   serviceName=${serviceName:?not set or empty}
 
-  templatesBucketName=$(get_stack_output "${BaseStackName}" "BucketName")
+  pipelineArtifactsBucketName=$(get_proton_service_pipeline_output "${serviceName}" "PipelineArtifactsBucketName")
+  aws s3 rm s3://${pipelineArtifactsBucketName} --recursive
 
   aws proton delete-service \
     --name ${serviceName} \
