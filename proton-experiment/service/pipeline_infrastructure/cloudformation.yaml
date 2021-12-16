@@ -116,7 +116,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: '{{ service.name }}-build'
-      ServiceRole: !GetAtt BuildProjectRoleRole.Arn
+      ServiceRole: !GetAtt BuildProjectRole.Arn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -130,7 +130,7 @@ Resources:
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
-          GroupName: !Ref BuildAppProjectLogGroup
+          GroupName: !Ref BuildProjectLogGroup
 
   BuildProjectLogGroup:
     Type: AWS::Logs::LogGroup
