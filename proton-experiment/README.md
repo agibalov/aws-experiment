@@ -22,3 +22,5 @@ The AWS Proton hello world.
 
 * Figure out CodeStar Github repository connections - either document step by step or automate.
 * Proton makes an attempt to streamline infrastructure management by introducing "environments" (which are "just the AWS resources") and "services" (which are "the AWS resources + pipelines").
+* TODO: build an ECS hello world (https://github.com/aws-samples/aws-proton-sample-templates/tree/main/loadbalanced-fargate-svc)
+* TODO: use minor versions for development (avoid having to undeploy before deploying updates) 
