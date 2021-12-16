@@ -3,6 +3,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 Outputs:
   PipelineBucketName:
     Value: !Ref PipelineBucket
+  PipelineArtifactsBucketName:
+    Value: !Ref PipelineArtifactsBucket
 
 Resources:
   PipelineBucket:
@@ -40,7 +42,7 @@ Resources:
       RoleArn: !GetAtt PipelineRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref PipelineArtifactStoreBucket
+        Location: !Ref PipelineArtifactsBucket
       Stages:
         - Name: Source
           Actions:
@@ -71,7 +73,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref BuildProject
 
-  PipelineArtifactStoreBucket:
+  PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
 
   PipelineRole:

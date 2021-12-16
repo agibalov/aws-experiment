@@ -183,6 +183,9 @@ elif [[ "${command}" == "create-service" ]]; then
 
 elif [[ "${command}" == "delete-service" ]]; then
   serviceName=${serviceName:?not set or empty}
+
+  templatesBucketName=$(get_stack_output "${BaseStackName}" "BucketName")
+
   aws proton delete-service \
     --name ${serviceName} \
     --region ${Region}
