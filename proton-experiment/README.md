@@ -9,7 +9,7 @@ The AWS Proton hello world.
 * `./tool.sh create-environment-template-version` to create the environment template version.
 * `envName=<ENVNAME> majorVersion=<MAJORVERSION> minorVersion=<MINORVERSION> ./tool.sh create-environment` to create (and destroy) the environment. `<ENVNAME>` is environment name, like `dev`. `<MAJORVERSION>` and `<MINORVERSION>` are the environment template version to be used for this environment (see the output of `./tool.sh create-environment-template-version`)
 * `./tool.sh create-service-template` (and `./tool.sh delete-service-template`) to create and delete the service template.
-* **TODO: create-service-template-version**
+* `envMajorVersion=<ENVMAJORVERSION> ./tool.sh create-service-template-version` to create the service template version.
 * `envName=<ENVNAME> serviceName=<SERVICENAME> majorVersion=<MAJORVERSION> ./tool.sh create-service` (and `serviceName=<SERVICENAME> ./tool.sh delete-service`) to create and destroy services. `<ENVNAME>` is environment name, like `dev`. `<SERVICENAME>` is a service name, like `app1`. `<MAJORVERSION>` is the major version of the service template  (see the output of `./tool.sh create-service-template-version`)
 
 ## Notes
