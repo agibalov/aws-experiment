@@ -63,6 +63,18 @@ elif [[ "${command}" == "create-environment-template" ]]; then
     --region ${Region}
 
 elif [[ "${command}" == "delete-environment-template" ]]; then
+  aws proton list-environment-template-versions \
+    --template-name ${EnvironmentTemplateName} \
+    --region ${Region} | \
+    python get_template_versions.py | \
+    while read -r major minor; do \
+      aws proton delete-environment-template-version \
+        --template-name ${EnvironmentTemplateName} \
+        --major-version ${major} \
+        --minor-version ${minor} \
+        --region ${Region}; \
+    done
+
   aws proton delete-environment-template \
     --name ${EnvironmentTemplateName} \
     --region ${Region}
@@ -130,6 +142,18 @@ elif [[ "${command}" == "create-service-template" ]]; then
     --region ${Region}
 
 elif [[ "${command}" == "delete-service-template" ]]; then
+  aws proton list-service-template-versions \
+    --template-name ${ServiceTemplateName} \
+    --region ${Region} | \
+    python get_template_versions.py | \
+    while read -r major minor; do \
+      aws proton delete-service-template-version \
+        --template-name ${ServiceTemplateName} \
+        --major-version ${major} \
+        --minor-version ${minor} \
+        --region ${Region}; \
+    done
+
   aws proton delete-service-template \
     --name ${ServiceTemplateName} \
     --region ${Region}
