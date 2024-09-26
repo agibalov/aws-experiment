@@ -1,0 +1,12 @@
+schema:
+  format:
+    openapi: "3.0.0"
+  environment_input_type: "PublicEnvironmentInput"
+  types:
+    PublicEnvironmentInput:
+      type: object
+      description: "Input properties for my environment"
+      properties:
+        env_name:
+          type: string
+          description: "Infra bucket name"

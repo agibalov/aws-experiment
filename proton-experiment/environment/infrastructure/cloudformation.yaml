@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  EnvironmentBucketName:
+    Value: !Ref EnvironmentBucket
+
+Resources:
+  EnvironmentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # NOTE: environment.inputs.env_name is a user-defined parameter
+      BucketName: '{{ environment.inputs.env_name }}-3278yr7283yr32'
+      Tags:
+        # NOTE: environment.name is the actual environment name (environment object doesn't have anything else)
+        - Key: EnvName
+          Value: '{{ environment.name }}'

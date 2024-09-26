@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Outputs:
+  PipelineBucketName:
+    Value: !Ref PipelineBucket
+  PipelineArtifactsBucketName:
+    Value: !Ref PipelineArtifactsBucket
+
+Resources:
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: ServiceName
+          Value: '{{ service.name }}'
+        - Key: ServiceBranch
+          Value: '{{ service.branch_name }}'
+        - Key: ServiceRepoConnectionArn
+          Value: '{{ service.repository_connection_arn }}'
+        - Key: ServiceRepoConnectionId
+          Value: '{{ service.repository_id }}'
+        - Key: PipelineInputsHello
+          Value: '{{ pipeline.inputs.hello }}'
+        - Key: SIEnvBucketName
+          Value: '{{ service_instances[0].environment.outputs.EnvironmentBucketName }}'
+        - Key: SIInputsHello
+          Value: '{{ service_instances[0].inputs.hello }}'
+        - Key: SIName
+          Value: '{{ service_instances[0].name }}'
+        - Key: SIOutputs
+          Value: '{{ service_instances[0].outputs.ServiceBucketName }}'
+
+  # Pipeline:
+  # {{pipeline|tojson}}
+
+  # Service:
+  # {{service|tojson}}
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineArtifactsBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: 1
+              Configuration:
+                ConnectionArn: '{{ service.repository_connection_arn }}'
+                FullRepositoryId: '{{ service.repository_id }}'
+                BranchName: '{{ service.branch_name }}'
+              Name: Checkout
+              OutputArtifacts:
+                - Name: SourceCodeArtifact
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              InputArtifacts:
+                - Name: SourceCodeArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ProjectName: !Ref BuildProject
+
+  PipelineArtifactsBucket:
+    Type: AWS::S3::Bucket
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  BuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowEverything
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: '{{ service.name }}-build'
+      ServiceRole: !GetAtt BuildProjectRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: proton-experiment/buildspec.yaml
+      TimeoutInMinutes: 5
+#      LogsConfig:
+#        CloudWatchLogs:
+#          Status: ENABLED
+#          GroupName: !Ref BuildProjectLogGroup
+#
+#  BuildProjectLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: '{{ service.name }}-build'
+#      RetentionInDays: 1
