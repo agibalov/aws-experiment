@@ -19,6 +19,9 @@ public class App {
     }
 
     private static void stack(Context ctx) {
+        ctx.log().info("stack name is %s", ctx.stackName());
+        ctx.log().info("project name is %s", ctx.projectName());
+
         var bucket = new BucketV2("website-bucket", BucketV2Args.builder()
                 .build());
 
@@ -61,6 +64,11 @@ public class App {
                 .source(new StringAsset("<h1>hello world</h1>"))
                 .contentType("text/html")
                 .build());
+
+        indexObject.arn().applyValue(arn -> {
+            ctx.log().info("Index object ARN is %s", arn);
+            return null;
+        });
 
         var errorObject = new BucketObject("error", BucketObjectArgs.builder()
                 .bucket(bucket.id())
