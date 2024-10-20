@@ -1,0 +1,7 @@
+name: pulumi-experiment
+description: A minimal Java Pulumi program with Gradle builds
+runtime: java
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: java-gradle
